@@ -419,13 +419,13 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
         // ===== contact list header =====
         Padding(padding: EdgeInsets.fromLTRB(14, 8, 14, 4), child: Row(children: [
-          Text(widget.dateEpochDay == todayEpoch ? '今日通联' : '${dt.month}月${dt.day}日 通联',
-            style: TextStyle(color: AppColors.amber, fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
-          if (widget.dateEpochDay == todayEpoch) ...[
+          Text(_historicalContacts != null ? '??  $_searchCallsign' : (widget.dateEpochDay == todayEpoch ? '????' : '${dt.month}?${dt.day}? ??'),
+            style: TextStyle(color: isDark ? AppColors.primaryDark : AppColors.primary, fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+          if (_historicalContacts == null && widget.dateEpochDay == todayEpoch) ...[
             const Spacer(),
             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(color: AppColors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-              child: Text('${contactsAsync.valueOrNull?.length ?? 0} 条', style: TextStyle(fontSize: 11, color: AppColors.amber, fontFamily: 'monospace'))),
+              decoration: BoxDecoration(color: (isDark ? AppColors.primaryDark : AppColors.primary).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+              child: Text('${contactsAsync.valueOrNull?.length ?? 0} ?', style: TextStyle(fontSize: 11, color: isDark ? AppColors.primaryDark : AppColors.primary, fontFamily: 'monospace'))),
           ],
         ])),
 
