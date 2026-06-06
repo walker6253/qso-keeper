@@ -10,8 +10,10 @@ class AppColors {
   static const primaryFixed = Color(0xFFD9E2FF);
 
   // ── Tertiary (Gold/Amber) ──
-  static const amber = Color(0xFFBFAB49);
-  static const amberDark = Color(0xFFDCC661);
+  static const amber = primary;          // now blue primary (matching original)
+  static const amberDark = primaryDark;
+  static const gold = Color(0xFFBFAB49);
+  static const goldDark = Color(0xFFDCC661);
   static const amberContainer = Color(0xFFF9E37A);
 
   // ── Light surface tokens ──

@@ -476,8 +476,8 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
   Widget _buildCallsignBadge(Color textMuted) => Padding(padding: EdgeInsets.only(top: 6, bottom: 4), child: Row(children: [
     Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: AppColors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.amber.withValues(alpha: 0.25))),
-      child: Text(_callsign, style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w700, fontSize: 14, fontFamily: 'monospace'))),
+      decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.gold.withValues(alpha: 0.3))),
+      child: Text(_callsign, style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700, fontSize: 14, fontFamily: 'monospace'))),
   ]));
 
   Widget _buildSuggestions(Color surface, Color border) => Container(
