@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import 'package:intl/intl.dart';
 
 final datesProvider = FutureProvider<List<({int date, String label, int count, bool isToday})>>((ref) async {
+  ref.watch(homeRefreshNotifier);
   final db = ref.watch(dbProvider);
   final items = await db.contactDao.getAllDatesWithCount();
   final today = DateTime.now();
@@ -63,6 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       initialDate: now,
       firstDate: DateTime(2000),
       lastDate: now,
+      locale: const Locale('zh'),
       builder: (ctx, child) => Theme(data: Theme.of(ctx).copyWith(
         colorScheme: ColorScheme.dark(primary: AppColors.amber, onPrimary: AppColors.deep, surface: AppColors.surface),
       ), child: child!),
@@ -81,7 +83,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final surfaceColor = isDark ? AppColors.surface : Colors.white;
     final textPrimary = isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D);
     final textMuted = isDark ? AppColors.textMuted : const Color(0xFF777680);
-    final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF434653);
     final borderColor = isDark ? AppColors.border : const Color(0xFFE0E0E8);
     final amberColor = AppColors.amber;
     final amberBgColor = isDark ? AppColors.amber.withValues(alpha: 0.1) : AppColors.amber.withValues(alpha: 0.08);
@@ -91,7 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
-        title: Text('HAM 日志', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: amberColor, fontFamily: 'monospace')),
+        title: Text('QSO Keeper', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: amberColor, fontFamily: 'monospace')),
         actions: [IconButton(icon: Icon(Icons.bar_chart, color: amberColor), onPressed: () => context.go('/stats'))],
       ),
       body: datesAsync.when(

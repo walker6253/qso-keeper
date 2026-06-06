@@ -14,6 +14,7 @@ import '../../data/providers.dart';
 import '../../utils/smart_input_parser.dart';
 import '../../utils/band_util.dart';
 import '../../utils/callsign_utils.dart';
+import '../../services/equipment_manager.dart';
 
 final logEntryProvider = FutureProvider.family<List<ContactRecord>, int>((ref, date) async {
   final db = ref.watch(dbProvider);
@@ -43,6 +44,21 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
   bool _showSuggestions = false, _showSuccess = false;
   String _band = '';
   bool _isCommitting = false;
+  String _selectedAntenna = '', _selectedRig = '';
+  List<String> _antennaList = [];
+  List<EquipmentCategory> _rigCategories = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEquipment();
+  }
+
+  Future<void> _loadEquipment() async {
+    final antennas = await EquipmentManager.getAntennas();
+    final rigs = await EquipmentManager.getRigs();
+    if (mounted) setState(() { _antennaList = antennas; _rigCategories = rigs; });
+  }
 
   @override
   void dispose() {
@@ -58,7 +74,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       setState(() { _frequency = _preEditFreq; _mode.text = _preEditMode; _callsign = ''; _showSuggestions = false; });
       return;
     }
-    final prevEmpty = _smartInput.text.length <= 1 || (_smartInput.text.substring(0, _smartInput.text.length - 1).trim().isEmpty);
+    final prevEmpty = _smartInput.text.length <= 1;
     if (prevEmpty) { _preEditFreq = _frequency; _preEditMode = _mode.text; }
     final parsed = SmartInputParser.parse(input);
     if (parsed.callsign.isNotEmpty) _callsign = parsed.callsign;
@@ -85,7 +101,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     _smartInput.clear();
     _isCommitting = false;
     FocusScope.of(context).unfocus();
-    setState(() { _showRstSentKb = false; _showRstRecvKb = false; _showPowerTxKb = false; _showPowerRxKb = false; });
+    setState(() { _showRstSentKb = false; _showRstRecvKb = false; _showPowerTxKb = false; _showPowerRxKb = false; _showSuggestions = false; });
   }
 
   void _updateBand() {
@@ -100,7 +116,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
   }
 
   Future<void> _selectSuggestion(String callsign) async {
-    _callsign = callsign; _showSuggestions = false; setState(() {});
+    _callsign = callsign; _showSuggestions = false;
+    FocusScope.of(context).unfocus();
+    setState(() {});
     final db = ref.read(dbProvider); final last = await db.contactDao.getLastContactByCallsign(callsign);
     if (last != null && mounted) setState(() { _frequency = last.frequencyMHz > 0 ? last.frequencyMHz.toString() : ''; _mode.text = last.mode; _updateBand(); });
   }
@@ -116,17 +134,19 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       powerRx: Value(_powerRx.text.replaceAll(RegExp(r'[Ww]$'), '').trim()),
       notes: Value(_notes.text.trim()), createdAt: Value(DateTime.now().millisecondsSinceEpoch),
     ));
-    _callsign = ''; _frequency = ''; _band = ''; _mode.clear(); _notes.clear(); _smartInput.clear();
+    _callsign = ''; _notes.clear(); _smartInput.clear();
     _rstSent.text = '59'; _rstReceived.text = '59'; _powerTx.text = '100'; _powerRx.text = '100';
+    _selectedAntenna = ''; _selectedRig = '';
     setState(() => _showSuccess = true);
     _closeAllKeyboards();
     ref.invalidate(logEntryProvider(widget.dateEpochDay));
+    ref.read(homeRefreshNotifier.notifier).state++;
     Future.delayed(Duration(seconds: 2), () { if (mounted) setState(() => _showSuccess = false); });
   }
 
   void _closeAllKeyboards() { setState(() { _showRstSentKb = false; _showRstRecvKb = false; _showPowerTxKb = false; _showPowerRxKb = false; }); FocusScope.of(context).unfocus(); }
 
-  Future<void> _deleteContact(int id) async { await ref.read(dbProvider).contactDao.deleteContact(id); ref.invalidate(logEntryProvider(widget.dateEpochDay)); }
+  Future<void> _deleteContact(int id) async { await ref.read(dbProvider).contactDao.deleteContact(id); ref.invalidate(logEntryProvider(widget.dateEpochDay)); ref.read(homeRefreshNotifier.notifier).state++; }
 
   Future<void> _editContact(ContactRecord c) async {
     final callsignCtrl = TextEditingController(text: c.callsign);
@@ -137,9 +157,8 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     final ptxCtrl = TextEditingController(text: c.powerTx);
     final prxCtrl = TextEditingController(text: c.powerRx);
     final notesCtrl = TextEditingController(text: c.notes);
-    final dateLabel = DateFormat('yyyy-MM-dd').format(DateTime.fromMillisecondsSinceEpoch(c.dateEpochDay * 86400000));
-    final timeLabel = DateFormat('HH:mm:ss').format(DateTime.fromMillisecondsSinceEpoch(c.createdAt));
-    var editDateEpoch = c.dateEpochDay;
+    var editDate = DateTime.fromMillisecondsSinceEpoch(c.dateEpochDay * 86400000);
+    var editTime = TimeOfDay.fromDateTime(DateTime.fromMillisecondsSinceEpoch(c.createdAt));
     var editCreatedAt = c.createdAt;
     var modeExpanded = false;
     final modeOptions = ['USB', 'LSB', 'FM'];
@@ -156,101 +175,47 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           Text('QSO Editor', style: TextStyle(fontSize: 11, letterSpacing: 2, color: AppColors.textMuted)),
         ]),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Date + Time row
           Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('日期', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              TextField(controller: TextEditingController(text: dateLabel), readOnly: true, enabled: false,
-                style: TextStyle(fontSize: 13, color: isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D)),
-                decoration: _editInputDeco(inputBg, isDark),
-                onTap: () async {
-                  final picked = await showDatePicker(context: ctx, initialDate: DateTime.fromMillisecondsSinceEpoch(editDateEpoch * 86400000),
-                    firstDate: DateTime(2000), lastDate: DateTime.now(),
-                    builder: (_, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: AppColors.amber)), child: child!));
-                  if (picked != null) { setDlg(() => editDateEpoch = picked.millisecondsSinceEpoch ~/ 86400000); }
-                }),
-            ])),
+            Expanded(child: _editLabelField(ctx, setDlg, '日期', DateFormat('yyyy-MM-dd').format(editDate), inputBg, isDark, () async {
+              final picked = await showDatePicker(context: ctx, locale: const Locale('zh'),
+                initialDate: editDate, firstDate: DateTime(2000), lastDate: DateTime.now(),
+                builder: (_, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: AppColors.amber)), child: child!));
+              if (picked != null) setDlg(() => editDate = picked);
+            })),
             const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('时间', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              TextField(controller: TextEditingController(text: timeLabel), readOnly: true, enabled: false,
-                style: TextStyle(fontSize: 13, color: isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D)),
-                decoration: _editInputDeco(inputBg, isDark),
-                onTap: () async {
-                  final t = TimeOfDay.fromDateTime(DateTime.fromMillisecondsSinceEpoch(editCreatedAt));
-                  final picked = await showTimePicker(context: ctx, initialTime: t,
-                    builder: (_, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: AppColors.amber)), child: child!));
-                  if (picked != null) {
-                    final dt = DateTime.fromMillisecondsSinceEpoch(editDateEpoch * 86400000);
-                    setDlg(() => editCreatedAt = DateTime(dt.year, dt.month, dt.day, picked.hour, picked.minute).millisecondsSinceEpoch);
-                  }
-                }),
-            ])),
+            Expanded(child: _editLabelField(ctx, setDlg, '时间', editTime.format(context), inputBg, isDark, () async {
+              final picked = await showTimePicker(context: ctx, initialTime: editTime,
+                builder: (_, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: AppColors.amber)), child: child!));
+              if (picked != null) {
+                setDlg(() {
+                  editTime = picked;
+                  editCreatedAt = DateTime(editDate.year, editDate.month, editDate.day, picked.hour, picked.minute).millisecondsSinceEpoch;
+                });
+              }
+            })),
           ]),
           const SizedBox(height: 14),
-          // Callsign
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('呼号', style: _editLabelStyle(isDark)),
-            const SizedBox(height: 4),
-            TextField(controller: callsignCtrl,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? AppColors.amber : const Color(0xFF7A5C00)),
-              textCapitalization: TextCapitalization.characters,
-              decoration: _editInputDeco(inputBg, isDark)),
-          ]),
+          _editTextColumn(ctx, setDlg, '呼号', callsignCtrl, inputBg, isDark, textCapitalization: TextCapitalization.characters, big: true),
           const SizedBox(height: 14),
-          // Freq + Mode
           Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('频率 MHz', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              TextField(controller: freqCtrl, style: _editFieldStyle(isDark), decoration: _editInputDeco(inputBg, isDark)),
-            ])),
+            Expanded(child: _editTextColumn(ctx, setDlg, '频率 MHz', freqCtrl, inputBg, isDark)),
             const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('模式', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              _buildModeDropdown(ctx, modeCtrl, modeOptions, modeExpanded, (v) => setDlg(() => modeExpanded = v), inputBg, isDark),
-            ])),
+            Expanded(child: _editDropdownColumn(ctx, setDlg, '模式', modeCtrl, modeOptions, modeExpanded, (v) => setDlg(() => modeExpanded = v), inputBg, isDark)),
           ]),
           const SizedBox(height: 14),
-          // RST
           Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('RST 发送', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              TextField(controller: rsCtrl, style: _editFieldStyle(isDark), decoration: _editInputDeco(inputBg, isDark)),
-            ])),
+            Expanded(child: _editTextColumn(ctx, setDlg, 'RST 发送', rsCtrl, inputBg, isDark)),
             const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('RST 接收', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              TextField(controller: rrCtrl, style: _editFieldStyle(isDark), decoration: _editInputDeco(inputBg, isDark)),
-            ])),
+            Expanded(child: _editTextColumn(ctx, setDlg, 'RST 接收', rrCtrl, inputBg, isDark)),
           ]),
           const SizedBox(height: 14),
-          // Power
           Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('功率 发送', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              TextField(controller: ptxCtrl, style: _editFieldStyle(isDark), decoration: _editInputDeco(inputBg, isDark)),
-            ])),
+            Expanded(child: _editTextColumn(ctx, setDlg, '功率 发送', ptxCtrl, inputBg, isDark)),
             const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('功率 接收', style: _editLabelStyle(isDark)),
-              const SizedBox(height: 4),
-              TextField(controller: prxCtrl, style: _editFieldStyle(isDark), decoration: _editInputDeco(inputBg, isDark)),
-            ])),
+            Expanded(child: _editTextColumn(ctx, setDlg, '功率 接收', prxCtrl, inputBg, isDark)),
           ]),
           const SizedBox(height: 14),
-          // Notes
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('备注', style: _editLabelStyle(isDark)),
-            const SizedBox(height: 4),
-            TextField(controller: notesCtrl, maxLines: 3, style: _editFieldStyle(isDark), decoration: _editInputDeco(inputBg, isDark)),
-          ]),
+          _editTextColumn(ctx, setDlg, '备注', notesCtrl, inputBg, isDark, maxLines: 3),
         ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false),
@@ -260,16 +225,17 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
         ],
       ));
     });
-    if (result == true) {
+    if (result == true && context.mounted) {
       final db = ref.read(dbProvider);
       await db.contactDao.updateContact(ContactRecord(
-        id: c.id, dateEpochDay: editDateEpoch, callsign: callsignCtrl.text.trim().toUpperCase(),
+        id: c.id, dateEpochDay: editDate.millisecondsSinceEpoch ~/ 86400000, callsign: callsignCtrl.text.trim().toUpperCase(),
         frequencyMHz: double.tryParse(freqCtrl.text) ?? c.frequencyMHz, mode: modeCtrl.text.trim(),
         rstSent: rsCtrl.text.trim(), rstReceived: rrCtrl.text.trim(),
         powerTx: ptxCtrl.text.trim(), powerRx: prxCtrl.text.trim(),
         notes: notesCtrl.text.trim(), createdAt: editCreatedAt,
       ));
       ref.invalidate(logEntryProvider(widget.dateEpochDay));
+      ref.read(homeRefreshNotifier.notifier).state++;
     }
   }
 
@@ -283,23 +249,63 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
   );
 
   TextStyle _editLabelStyle(bool isDark) => TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1, color: isDark ? AppColors.amber : const Color(0xFF7A5C00));
-
   TextStyle _editFieldStyle(bool isDark) => TextStyle(fontSize: 13, color: isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D));
 
-  Widget _buildModeDropdown(BuildContext ctx, TextEditingController ctrl, List<String> options, bool expanded, Function(bool) onExpand, Color bg, bool isDark) {
+  Widget _editLabelField(BuildContext ctx, StateSetter setDlg, String label, String displayVal, Color bg, bool isDark, VoidCallback onTap) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: _editLabelStyle(isDark)),
+      const SizedBox(height: 4),
+      GestureDetector(onTap: onTap, child: AbsorbPointer(child: TextField(
+        controller: TextEditingController(text: displayVal),
+        readOnly: true, enabled: false,
+        style: _editFieldStyle(isDark),
+        decoration: _editInputDeco(bg, isDark),
+      ))),
+    ]);
+  }
+
+  Widget _editTextColumn(BuildContext ctx, StateSetter setDlg, String label, TextEditingController ctrl, Color bg, bool isDark, {int maxLines = 1, TextCapitalization textCapitalization = TextCapitalization.none, bool big = false}) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: _editLabelStyle(isDark)),
+      const SizedBox(height: 4),
+      TextField(controller: ctrl, maxLines: maxLines, textCapitalization: textCapitalization,
+        style: TextStyle(fontSize: big ? 16 : 13, fontWeight: big ? FontWeight.w700 : FontWeight.w400, color: big ? (isDark ? AppColors.amber : const Color(0xFF7A5C00)) : (isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D))),
+        decoration: _editInputDeco(bg, isDark)),
+    ]);
+  }
+
+  Widget _editDropdownColumn(BuildContext ctx, StateSetter setDlg, String label, TextEditingController ctrl, List<String> options, bool expanded, Function(bool) onExpand, Color bg, bool isDark) {
     final val = ctrl.text.isNotEmpty ? ctrl.text : options.first;
-    return GestureDetector(
-      onTap: () => onExpand(!expanded),
-      child: Container(
-        height: 40, padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isDark ? AppColors.border.withValues(alpha: 0.3) : const Color(0xFFC3C6D5))),
-        child: Row(children: [
-          Expanded(child: Text(val, style: _editFieldStyle(isDark))),
-          Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, size: 18, color: isDark ? AppColors.textMuted : const Color(0xFF777680)),
-        ]),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: _editLabelStyle(isDark)),
+      const SizedBox(height: 4),
+      GestureDetector(
+        onTap: () => onExpand(!expanded),
+        child: Container(
+          height: 40, padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8), border: Border.all(color: isDark ? AppColors.border.withValues(alpha: 0.3) : const Color(0xFFC3C6D5))),
+          child: Row(children: [
+            Expanded(child: Text(val, style: _editFieldStyle(isDark))),
+            Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, size: 18, color: isDark ? AppColors.textMuted : const Color(0xFF777680)),
+          ]),
+        ),
       ),
-    );
+    ]);
+  }
+
+  void _chipToggle(List<String> allItems, String item, String Function() getSelected, Function(String) setSelected, TextEditingController notes) {
+    setState(() {
+      var notesText = notes.text;
+      for (final a in allItems) { notesText = notesText.replaceAll(a, ''); }
+      notesText = notesText.replaceAll(RegExp(r'\s{2,}'), ' ').replaceAll(RegExp(r' ,'), ',').replaceAll(RegExp(r', ,'), ',').trim().replaceAll(RegExp(r',+$'), '').trim();
+      if (getSelected() == item) {
+        setSelected('');
+        notes.text = notesText;
+      } else {
+        setSelected(item);
+        notes.text = notesText.isNotEmpty ? '$notesText, $item' : item;
+      }
+    });
   }
 
   @override
@@ -336,16 +342,15 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
                 Text('保存成功', style: TextStyle(color: AppColors.scopeGreen, fontSize: 13, fontWeight: FontWeight.w600)),
               ])).animate().fadeIn(duration: 300.ms).slideY(begin: -0.5, end: 0, duration: 300.ms),
 
-          // Freq | Mode | Band info panel
-          Container(
-            width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12), margin: const EdgeInsets.only(bottom: 10),
+          // Freq | Mode | Band info
+          Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12), margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(color: surfaceColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor.withValues(alpha: 0.3))),
             child: Row(children: [
-              Expanded(child: _infoPanel('频率', _frequency.isNotEmpty ? _frequency : '--', textPrimary)),
+              Expanded(child: _infoPanel('频率', _frequency.isNotEmpty ? _frequency : '--')),
               Container(width: 1, height: 32, color: borderColor.withValues(alpha: 0.3)),
-              Expanded(child: _infoPanel('模式', _mode.text.isNotEmpty ? _mode.text : '--', textPrimary)),
+              Expanded(child: _infoPanel('模式', _mode.text.isNotEmpty ? _mode.text : '--')),
               Container(width: 1, height: 32, color: borderColor.withValues(alpha: 0.3)),
-              Expanded(child: _infoPanel('波段', _band.isNotEmpty ? _band : '--', textPrimary)),
+              Expanded(child: _infoPanel('波段', _band.isNotEmpty ? _band : '--')),
             ]),
           ),
 
@@ -388,16 +393,16 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
           // RST
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(child: _rstColumn('我的信号报告', _rstSent, _showRstSentKb, () => setState(() { _showRstSentKb = !_showRstSentKb; _showRstRecvKb = false; _showPowerTxKb = false; _showPowerRxKb = false; }), (v) { _rstSent.text = v; setState(() => _showRstSentKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
+            Expanded(child: _rstColumn('我的信号报告', _rstSent, _showRstSentKb, () => _toggleRstKb(true), (v) { _rstSent.text = v; setState(() => _showRstSentKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
             SizedBox(width: 12),
-            Expanded(child: _rstColumn('对方信号报告', _rstReceived, _showRstRecvKb, () => setState(() { _showRstRecvKb = !_showRstRecvKb; _showRstSentKb = false; _showPowerTxKb = false; _showPowerRxKb = false; }), (v) { _rstReceived.text = v; setState(() => _showRstRecvKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
+            Expanded(child: _rstColumn('对方信号报告', _rstReceived, _showRstRecvKb, () => _toggleRstKb(false), (v) { _rstReceived.text = v; setState(() => _showRstRecvKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
           ]), SizedBox(height: 14),
 
           // Power
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(child: _powerColumn('我的功率 (W)', _powerTx, _showPowerTxKb, () => setState(() { _showPowerTxKb = !_showPowerTxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerRxKb = false; }), (v) { _powerTx.text = v; setState(() => _showPowerTxKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
+            Expanded(child: _powerColumn('我的功率 (W)', _powerTx, _showPowerTxKb, () => _togglePowerKb(true), (v) { _powerTx.text = v; setState(() => _showPowerTxKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
             SizedBox(width: 12),
-            Expanded(child: _powerColumn('对方功率 (W)', _powerRx, _showPowerRxKb, () => setState(() { _showPowerRxKb = !_showPowerRxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerTxKb = false; }), (v) { _powerRx.text = v; setState(() => _showPowerRxKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
+            Expanded(child: _powerColumn('对方功率 (W)', _powerRx, _showPowerRxKb, () => _togglePowerKb(false), (v) { _powerRx.text = v; setState(() => _showPowerRxKb = false); }, surfaceLightColor, borderColor, textPrimary, textSecondary)),
           ]), SizedBox(height: 14),
 
           // Notes
@@ -409,9 +414,19 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: borderColor.withValues(alpha: 0.5))),
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.amber, width: 1.5)),
             )),
-          SizedBox(height: 14),
+          SizedBox(height: 10),
 
-          // Save button
+          // Equipment chips
+          if (_antennaList.isNotEmpty) ...[
+            _chipSection('天线', _antennaList, _selectedAntenna, (v) { _selectedAntenna = v; setState(() {}); }),
+            SizedBox(height: 10),
+          ],
+          if (_rigCategories.isNotEmpty) ...[
+            _rigChipSection(surfaceLightColor, borderColor, textPrimary, textSecondary),
+            SizedBox(height: 10),
+          ],
+
+          // Save
           SizedBox(width: double.infinity, child: ElevatedButton(
             onPressed: _callsign.isNotEmpty ? _save : null,
             style: ElevatedButton.styleFrom(
@@ -445,7 +460,17 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     );
   }
 
-  Widget _infoPanel(String label, String value, Color textPrimary) => Column(children: [
+  void _toggleRstKb(bool sent) => setState(() {
+    if (sent) { _showRstSentKb = !_showRstSentKb; _showRstRecvKb = false; _showPowerTxKb = false; _showPowerRxKb = false; }
+    else { _showRstRecvKb = !_showRstRecvKb; _showRstSentKb = false; _showPowerTxKb = false; _showPowerRxKb = false; }
+  });
+
+  void _togglePowerKb(bool tx) => setState(() {
+    if (tx) { _showPowerTxKb = !_showPowerTxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerRxKb = false; }
+    else { _showPowerRxKb = !_showPowerRxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerTxKb = false; }
+  });
+
+  Widget _infoPanel(String label, String value) => Column(children: [
     Text(label.toUpperCase(), style: const TextStyle(color: AppColors.textMuted, fontSize: 10, letterSpacing: 1.2)),
     const SizedBox(height: 3),
     Text(value, style: TextStyle(color: AppColors.amber, fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
@@ -550,10 +575,8 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
         shadowColor: Colors.black.withValues(alpha: 0.3),
         child: InkWell(borderRadius: BorderRadius.circular(10), onTap: () => _editContact(c),
           child: IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            // Left accent bar
             Container(width: 4, decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.horizontal(left: Radius.circular(10))), constraints: const BoxConstraints(minHeight: 72)),
             Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              // Row 1: Callsign + QRZ | Time + Mode badge
               Row(children: [
                 Expanded(child: Row(children: [
                   Text(c.callsign, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.5, color: textPrimary)),
@@ -567,7 +590,6 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
                   _modePill(c.mode, accent),
                 ]),
               ]),
-              // Row 2: Frequency + RST
               if (c.frequencyMHz > 0 || c.rstSent.isNotEmpty || c.rstReceived.isNotEmpty) ...[
                 const SizedBox(height: 5),
                 Row(children: [
@@ -594,7 +616,6 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
                   ],
                 ]),
               ],
-              // Row 3: Notes
               if (c.notes.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(c.notes, style: TextStyle(color: textMuted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -612,6 +633,48 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
       child: Text(mode, style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'monospace')));
+  }
+
+  Widget _chipSection(String title, List<String> items, String selected, Function(String) setSelected) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.amber, letterSpacing: 1)),
+      const SizedBox(height: 4),
+      Wrap(spacing: 6, runSpacing: 6, children: items.map((tag) => GestureDetector(
+        onTap: () => _chipToggle(items, tag, () => _selectedAntenna, (v) { _selectedAntenna = v; }, _notes),
+        child: Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected == tag ? AppColors.amber.withValues(alpha: 0.2) : AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: selected == tag ? AppColors.amber : AppColors.border.withValues(alpha: 0.2)),
+          ),
+          child: Text(tag, style: TextStyle(fontSize: 11, fontWeight: selected == tag ? FontWeight.w700 : FontWeight.w400, color: selected == tag ? AppColors.amber : AppColors.textSecondary)),
+        ),
+      )).toList()),
+    ]);
+  }
+
+  Widget _rigChipSection(Color surfaceLight, Color border, Color textPrimary, Color textSecondary) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('设备', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.amber, letterSpacing: 1)),
+      const SizedBox(height: 4),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: _rigCategories.map((cat) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.only(top: 4, bottom: 2), child: Text(cat.brand, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textPrimary))),
+        Wrap(spacing: 6, runSpacing: 6, children: cat.models.map((model) {
+          final sel = _selectedRig == model;
+          return GestureDetector(
+            onTap: () => _chipToggle(cat.models, model, () => _selectedRig, (v) { _selectedRig = v; }, _notes),
+            child: Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: sel ? AppColors.amber.withValues(alpha: 0.2) : surfaceLight,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: sel ? AppColors.amber : border.withValues(alpha: 0.2)),
+              ),
+              child: Text(model, style: TextStyle(fontSize: 11, fontWeight: sel ? FontWeight.w700 : FontWeight.w400, color: sel ? AppColors.amber : textSecondary)),
+            ),
+          );
+        }).toList()),
+      ])).toList()),
+    ]);
   }
 
   void _openQrz(String callsign) {

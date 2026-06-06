@@ -15,6 +15,7 @@ import '../../services/adif_importer.dart';
 import '../../services/cloudlog_sync_service.dart';
 import '../../services/location_service.dart';
 import '../../services/update_checker.dart';
+import '../../services/equipment_manager.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -36,6 +37,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   int _totalContacts = 0;
   bool _syncing = false;
   String _syncResult = '';
+  List<String> _antennaList = [];
+  List<EquipmentCategory> _rigList = [];
+  String _newAntenna = '', _newRigBrand = '', _newRigModel = '';
 
   @override
   void initState() {
@@ -47,6 +51,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await AppPreferences.init();
     final db = ref.read(dbProvider);
     final total = await db.contactDao.getTotalCount();
+    final antennas = await EquipmentManager.getAntennas();
+    final rigs = await EquipmentManager.getRigs();
     setState(() {
       _callsignCtrl.text = AppPreferences.callsign;
       _nameCtrl.text = AppPreferences.opName;
@@ -59,6 +65,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _timezone = AppPreferences.timezone;
       _gridSquare = AppPreferences.gridSquare;
       _totalContacts = total;
+      _antennaList = antennas;
+      _rigList = rigs;
     });
   }
 
@@ -97,7 +105,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final tmp = await getTemporaryDirectory();
     final file = File('${tmp.path}/hamlog_export.adi');
     await file.writeAsString(content);
-    await Share.shareXFiles([XFile(file.path)], subject: 'HAM日志导出');
+    await Share.shareXFiles([XFile(file.path)], subject: 'QSO日志导出');
   }
 
   Future<void> _importAdif() async {
@@ -121,6 +129,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       } catch (_) {}
     }
     _loadPrefs();
+    ref.read(homeRefreshNotifier.notifier).state++;
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('导入完成：$imported / ${records.length} 条'), backgroundColor: AppColors.scopeGreen));
   }
 
@@ -143,6 +152,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _syncResult = '成功: ${result.success}  失败: ${result.failed}';
     });
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_syncResult), backgroundColor: result.failed > 0 ? AppColors.alertRed : AppColors.scopeGreen));
+  }
+
+  Future<void> _addAntenna() async {
+    if (_newAntenna.trim().isEmpty) return;
+    _antennaList.add(_newAntenna.trim());
+    await EquipmentManager.setAntennas(_antennaList);
+    setState(() => _newAntenna = '');
+  }
+
+  Future<void> _deleteAntenna(int idx) async {
+    _antennaList.removeAt(idx);
+    await EquipmentManager.setAntennas(_antennaList);
+    setState(() {});
+  }
+
+  Future<void> _addRig() async {
+    if (_newRigBrand.trim().isEmpty) return;
+    final idx = _rigList.indexWhere((c) => c.brand == _newRigBrand.trim());
+    if (idx >= 0) {
+      if (_newRigModel.trim().isNotEmpty) _rigList[idx].models.add(_newRigModel.trim());
+    } else {
+      _rigList.add(EquipmentCategory(_newRigBrand.trim(), _newRigModel.trim().isNotEmpty ? [_newRigModel.trim()] : []));
+    }
+    await EquipmentManager.setRigs(_rigList);
+    setState(() { _newRigBrand = ''; _newRigModel = ''; });
+  }
+
+  Future<void> _deleteRigModel(String brand, String model) async {
+    final idx = _rigList.indexWhere((c) => c.brand == brand);
+    if (idx >= 0) {
+      _rigList[idx].models.remove(model);
+      if (_rigList[idx].models.isEmpty) _rigList.removeAt(idx);
+    }
+    await EquipmentManager.setRigs(_rigList);
+    setState(() {});
   }
 
   @override
@@ -180,6 +224,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ]),
         if (_gridSquare.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('📍 当前网格: $_gridSquare', style: TextStyle(color: AppColors.amber, fontSize: 12))),
         const SizedBox(height: 16),
+        _sectionTitle('天线管理'),
+        const SizedBox(height: 8),
+        ..._antennaList.asMap().entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 4), child: Row(children: [
+          Expanded(child: Text(e.value, style: TextStyle(color: textPrimary, fontSize: 13))),
+          IconButton(icon: Icon(Icons.delete_outline, size: 18, color: AppColors.alertRed.withValues(alpha: 0.6)), onPressed: () => _deleteAntenna(e.key)),
+        ]))),
+        Row(children: [
+          Expanded(child: TextField(decoration: InputDecoration(hintText: '新天线', isDense: true, filled: true, fillColor: inputFill, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor))),
+            style: TextStyle(fontSize: 12, color: textPrimary), onChanged: (v) => _newAntenna = v)),
+          const SizedBox(width: 8),
+          ElevatedButton(onPressed: _addAntenna, style: ElevatedButton.styleFrom(backgroundColor: AppColors.scopeGreen), child: Text('添加', style: TextStyle(fontSize: 11, color: AppColors.deep))),
+        ]),
+        const SizedBox(height: 16),
+        _sectionTitle('设备管理'),
+        const SizedBox(height: 8),
+        ..._rigList.expand((cat) => [
+          Text(cat.brand, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.amber)),
+          const SizedBox(height: 4),
+          ...cat.models.map((m) => Padding(padding: const EdgeInsets.only(bottom: 2), child: Row(children: [
+            SizedBox(width: 16),
+            Expanded(child: Text(m, style: TextStyle(color: textPrimary, fontSize: 12))),
+            IconButton(icon: Icon(Icons.delete_outline, size: 16, color: AppColors.alertRed.withValues(alpha: 0.6)), onPressed: () => _deleteRigModel(cat.brand, m)),
+          ]))),
+          const SizedBox(height: 6),
+        ]),
+        Row(children: [
+          Expanded(flex: 2, child: TextField(decoration: InputDecoration(hintText: '品牌', isDense: true, filled: true, fillColor: inputFill, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor))),
+            style: TextStyle(fontSize: 12, color: textPrimary), onChanged: (v) => _newRigBrand = v)),
+          const SizedBox(width: 8),
+          Expanded(flex: 3, child: TextField(decoration: InputDecoration(hintText: '型号', isDense: true, filled: true, fillColor: inputFill, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor))),
+            style: TextStyle(fontSize: 12, color: textPrimary), onChanged: (v) => _newRigModel = v)),
+          const SizedBox(width: 8),
+          ElevatedButton(onPressed: _addRig, style: ElevatedButton.styleFrom(backgroundColor: AppColors.scopeGreen), child: Text('添加', style: TextStyle(fontSize: 11, color: AppColors.deep))),
+        ]),
+        const SizedBox(height: 16),
         _sectionTitle('Cloudlog 同步'),
         const SizedBox(height: 8),
         _textField('URL', _cloudUrlCtrl, (v) => _savePref('cloudlogUrl', v), textPrimary, textSecondary, inputFill, borderColor),
@@ -207,7 +286,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _sectionTitle('关于'),
         const SizedBox(height: 8),
         Card(color: surfaceColor, child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('HAM 日志 v1.0.0', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w700)),
+          Text('QSO Keeper v1.0.0', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('总通联数: $_totalContacts', style: TextStyle(color: textSecondary, fontSize: 12)),
           const SizedBox(height: 8),
