@@ -215,17 +215,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _textField('呼号', _callsignCtrl, (v) => _savePref('callsign', v), textPrimary, textSecondary, inputFill, borderColor),
         _textField('姓名', _nameCtrl, (v) => _savePref('opName', v), textPrimary, textSecondary, inputFill, borderColor),
         _textField('设备', _equipCtrl, (v) => _savePref('equipment', v), textPrimary, textSecondary, inputFill, borderColor),
-        const SizedBox(height: 12),
-        _sectionTitle('位置 & 网格'),
-        const SizedBox(height: 8),
-        _textField('位置', _locCtrl, (v) => _savePref('location', v), textPrimary, textSecondary, inputFill, borderColor),
-        Row(children: [
-          Expanded(child: _textField('梅登海德网格', _gridCtrl, (v) => _savePref('gridSquare', v), textPrimary, textSecondary, inputFill, borderColor)),
-          const SizedBox(width: 8),
-          ElevatedButton(onPressed: _getLocation, style: ElevatedButton.styleFrom(backgroundColor: AppColors.ionBlue), child: Text('GPS', style: TextStyle(fontSize: 12))),
-        ]),
-        if (_gridSquare.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('📍 当前网格: $_gridSquare', style: TextStyle(color: AppColors.amber, fontSize: 12))),
-        const SizedBox(height: 16),
         _sectionTitle('天线管理'),
         const SizedBox(height: 8),
         ..._antennaList.asMap().entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 1), child: Row(children: [
@@ -243,7 +232,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 8),
         ..._rigList.expand((cat) => [
           Text(cat.brand, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.amber)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           ...cat.models.map((m) => Padding(padding: const EdgeInsets.only(bottom: 1), child: Row(children: [
             SizedBox(width: 16),
             Expanded(child: Text(m, style: TextStyle(color: textPrimary, fontSize: 12))),
@@ -289,7 +278,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 8),
         Card(color: surfaceColor, child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('QSO Keeper v1.0.0', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text('总通联数: $_totalContacts', style: TextStyle(color: textSecondary, fontSize: 12)),
           const SizedBox(height: 8),
           TextButton(onPressed: () async { final info = await UpdateChecker.check(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(info.hasUpdate ? '有新版本 v${info.latestVersion}' : '已是最新版本 v${info.currentVersion}'))); },
