@@ -210,13 +210,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: Text('设置', style: TextStyle(fontWeight: FontWeight.w700, color: textPrimary)),
       ),
       body: ListView(padding: const EdgeInsets.all(14), children: [
-        _sectionTitle('OP 信息'),
+        _sectionTitle('OP 信息', icon: Icons.person),
         const SizedBox(height: 8),
         _textField('呼号', _callsignCtrl, (v) => _savePref('callsign', v), textPrimary, textSecondary, inputFill, borderColor),
         _textField('姓名', _nameCtrl, (v) => _savePref('opName', v), textPrimary, textSecondary, inputFill, borderColor),
         _textField('设备', _equipCtrl, (v) => _savePref('equipment', v), textPrimary, textSecondary, inputFill, borderColor),
         const SizedBox(height: 16),
-        _sectionTitle('时区'),
+        _sectionTitle('时区', icon: Icons.schedule),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
@@ -236,7 +236,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
 
-        _sectionTitle('天线管理'),
+        _sectionTitle('天线管理', icon: Icons.settings_input_antenna),
         const SizedBox(height: 8),
         ..._antennaList.asMap().entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 1), child: Row(children: [
           Expanded(child: Text(e.value, style: TextStyle(color: textPrimary, fontSize: 13))),
@@ -249,7 +249,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ElevatedButton(onPressed: _addAntenna, style: ElevatedButton.styleFrom(backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary), child: Text('添加', style: TextStyle(fontSize: 11, color: Colors.white))),
         ]),
         const SizedBox(height: 16),
-        _sectionTitle('设备管理'),
+        _sectionTitle('设备管理', icon: Icons.build),
         const SizedBox(height: 8),
         ..._rigList.expand((cat) => [
           Text(cat.brand, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: textPrimary)),
@@ -271,7 +271,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ElevatedButton(onPressed: _addRig, style: ElevatedButton.styleFrom(backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary), child: Text('添加', style: TextStyle(fontSize: 11, color: Colors.white))),
         ]),
         const SizedBox(height: 16),
-        _sectionTitle('Cloudlog 同步'),
+        _sectionTitle('Cloudlog 同步', icon: Icons.cloud),
         const SizedBox(height: 8),
         _textField('URL', _cloudUrlCtrl, (v) => _savePref('cloudlogUrl', v), textPrimary, textSecondary, inputFill, borderColor),
         _textField('API Key', _cloudKeyCtrl, (v) => _savePref('cloudlogApiKey', v), textPrimary, textSecondary, inputFill, borderColor),
@@ -287,7 +287,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.amber)),
         if (_syncResult.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_syncResult, style: TextStyle(color: textSecondary, fontSize: 12))),
         const SizedBox(height: 16),
-        _sectionTitle('数据管理'),
+        _sectionTitle('数据管理', icon: Icons.folder),
         const SizedBox(height: 8),
         Row(children: [
           Expanded(child: ElevatedButton.icon(onPressed: _exportAdif, icon: Icon(Icons.file_upload), label: Text('导出 ADIF'), style: ElevatedButton.styleFrom(backgroundColor: inputFill))),
@@ -295,7 +295,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Expanded(child: ElevatedButton.icon(onPressed: _importAdif, icon: Icon(Icons.file_download), label: Text('导入 ADIF'), style: ElevatedButton.styleFrom(backgroundColor: inputFill))),
         ]),
         const SizedBox(height: 20),
-        _sectionTitle('关于'),
+        _sectionTitle('关于', icon: Icons.info_outline),
         const SizedBox(height: 8),
         Card(color: surfaceColor, child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('QSO Keeper v1.0.0', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w700)),
@@ -310,7 +310,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _sectionTitle(String title) => Row(children: [
+  Widget _sectionTitle(String title, {IconData? icon}) => Row(children: [
+    if (icon != null) ...[Icon(icon, size: 16, color: AppColors.primary), const SizedBox(width: 6)],
     Container(width: 3, height: 14, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2))),
     const SizedBox(width: 8),
     Text(title, style: TextStyle(color: AppColors.textLight, fontSize: 14, fontWeight: FontWeight.w700)),
