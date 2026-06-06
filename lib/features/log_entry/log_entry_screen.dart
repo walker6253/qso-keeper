@@ -429,8 +429,16 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           ],
         ])),
 
-        // ===== scrollable contact list =====
-        Expanded(child: contactsAsync.when(
+        // ===== scrollable contact list (historical or today) =====
+        Expanded(child: _historicalContacts != null
+          ? (_historicalContacts!.isEmpty
+            ? Center(child: Text('无历史记录', style: TextStyle(color: textMuted)))
+            : ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: 14),
+                itemCount: _historicalContacts!.length,
+                itemBuilder: (_, i) => _contactCard(_historicalContacts![i], surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
+              ))
+          : contactsAsync.when(
           data: (contacts) => contacts.isEmpty
             ? Center(child: Text('暂无记录', style: TextStyle(color: textMuted)))
             : ListView.builder(
