@@ -171,7 +171,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     );
 
     final result = await showDialog<bool>(context: context, builder: (ctx) {
-      return StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
+      return Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -227,7 +229,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, true),
             child: Text('保存', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.amber))),
         ],
-      ));
+      )));
     });
     if (result == true && context.mounted) {
       final db = ref.read(dbProvider);
