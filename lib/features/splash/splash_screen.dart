@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/design/app_colors.dart';
@@ -24,13 +24,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       backgroundColor: AppColors.deep,
       body: Stack(
         children: [
-          // Scan line effect
           Positioned.fill(
             child: CustomPaint(
               painter: ScanlinePainter(),
             ),
           ),
-          // Center content
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -41,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     .then()
                     .fadeOut(duration: 400.ms, delay: 1000.ms),
                 const SizedBox(height: 16),
-                Text('HAM 日志', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.amber))
+                Text('QSO Keeper', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.amber))
                     .animate()
                     .fadeIn(duration: 600.ms, delay: 300.ms)
                     .then()
@@ -55,7 +53,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               ],
             ),
           ),
-          // Bottom scan line
           Positioned(
             left: 0, right: 0, bottom: 60,
             child: Container(height: 1.5, color: AppColors.ionBlue.withValues(alpha: 0.6))

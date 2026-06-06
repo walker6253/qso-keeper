@@ -1,5 +1,5 @@
-﻿name: ham_logs
-description: "HAM 日志 - 业余无线电通联日志"
+name: qso_keeper
+description: "QSO Keeper - 业余无线电通联日志"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -45,4 +45,3 @@ flutter:
   assets:
     - assets/images/
     - assets/fonts/
-

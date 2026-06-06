@@ -1,4 +1,4 @@
-package com.hamlog.ham_logs
+package com.hamlog.qso_keeper
 
 import io.flutter.embedding.android.FlutterActivity
 
