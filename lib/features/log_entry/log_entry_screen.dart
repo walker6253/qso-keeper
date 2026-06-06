@@ -53,6 +53,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     super.initState();
     _frequency = ref.read(persistedFreqProvider);
     _mode.text = ref.read(persistedModeProvider);
+    _band = ref.read(persistedBandProvider);
     _loadEquipment();
   }
 
@@ -111,6 +112,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
   void _updateBand() {
     final mhz = double.tryParse(_frequency);
     if (mhz != null && mhz > 0) { _band = BandUtil.getBand(mhz); final m = BandUtil.autoMode(mhz); if (m.isNotEmpty && _mode.text.isEmpty) _mode.text = m; }
+    ref.read(persistedBandProvider.notifier).state = _band;
+    ref.read(persistedFreqProvider.notifier).state = _frequency;
+    ref.read(persistedModeProvider.notifier).state = _mode.text;
   }
 
   Future<void> _searchCallsigns(String q) async {
@@ -178,11 +182,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     );
 
     final result = await showDialog<bool>(context: context, builder: (ctx) {
-      return Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
-        titlePadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-        contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+      return StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -238,7 +238,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, true),
             child: Text('保存', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.amber))),
         ],
-      )));
+      ));
     });
     if (result == true && context.mounted) {
       final db = ref.read(dbProvider);

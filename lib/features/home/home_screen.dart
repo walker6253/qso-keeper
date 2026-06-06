@@ -7,6 +7,7 @@ import '../../data/database/app_database.dart';
 import '../../services/update_checker.dart';
 import '../../data/preferences/app_preferences.dart';
 import '../../data/providers.dart';
+import '../../data/preferences/app_preferences.dart';
 import 'package:intl/intl.dart';
 
 final datesProvider = FutureProvider<List<({int date, String label, int count, bool isToday})>>((ref) async {
@@ -66,7 +67,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       lastDate: now,
       locale: const Locale('zh'),
       builder: (ctx, child) => Theme(data: Theme.of(ctx).copyWith(
-        colorScheme: ColorScheme.dark(primary: AppColors.amber, onPrimary: AppColors.deep, surface: AppColors.surface),
+        colorScheme: Theme.of(ctx).brightness == Brightness.dark
+          ? ColorScheme.dark(primary: AppColors.amberDark, surface: AppColors.darkSurface)
+          : ColorScheme.light(primary: AppColors.primary, surface: AppColors.lightSurface),
       ), child: child!),
     );
     if (picked != null && mounted) {
@@ -92,7 +95,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
-        title: Text('QSO Keeper', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: amberColor, fontFamily: 'monospace')),
+        title: Consumer(builder: (ctx, ref, _) {
+          final callsign = AppPreferences.callsign;
+          final title = callsign.isNotEmpty ? '\ 的通联日志' : '业余无线电通联日志';
+          return Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: amberColor, fontFamily: 'monospace'));
+        }),
         actions: [IconButton(icon: Icon(Icons.bar_chart, color: amberColor), onPressed: () => context.go('/stats'))],
       ),
       body: datesAsync.when(
@@ -140,7 +147,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _pickDateAndGo,
-        backgroundColor: AppColors.ionBlue,
+        backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
