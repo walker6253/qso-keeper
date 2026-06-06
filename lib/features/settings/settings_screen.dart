@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:drift/drift.dart' show Value;
 import 'dart:io';
 import '../../core/design/app_colors.dart';
+import '../../utils/timezone_util.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../data/preferences/app_preferences.dart';
@@ -55,6 +56,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final rigs = await EquipmentManager.getRigs();
     setState(() {
       _callsignCtrl.text = AppPreferences.callsign;
+    _timezone = AppPreferences.timezone;
       _nameCtrl.text = AppPreferences.opName;
       _equipCtrl.text = AppPreferences.equipment;
       _locCtrl.text = AppPreferences.location;

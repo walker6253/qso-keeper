@@ -15,6 +15,8 @@ import '../../utils/smart_input_parser.dart';
 import '../../utils/band_util.dart';
 import '../../utils/callsign_utils.dart';
 import '../../services/equipment_manager.dart';
+import '../../utils/timezone_util.dart';
+import '../../data/preferences/app_preferences.dart';
 
 final logEntryProvider = FutureProvider.family<List<ContactRecord>, int>((ref, date) async {
   final db = ref.watch(dbProvider);
@@ -180,7 +182,8 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     final prxCtrl = TextEditingController(text: c.powerRx);
     final notesCtrl = TextEditingController(text: c.notes);
     var editDate = DateTime.fromMillisecondsSinceEpoch(c.dateEpochDay * 86400000);
-    var editTime = TimeOfDay.fromDateTime(DateTime.fromMillisecondsSinceEpoch(c.createdAt));
+    final editDt = TimezoneUtil.dateTimeFromEpoch(c.createdAt, AppPreferences.timezone);
+    var editTime = TimeOfDay.fromDateTime(editDt);
     var editCreatedAt = c.createdAt;
     var modeExpanded = false;
     final modeOptions = ['USB', 'LSB', 'FM'];
@@ -619,7 +622,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
   Widget _contactCard(ContactRecord c, Color surface, Color border, Color textPrimary, Color textSecondary, Color textMuted, bool isDark) {
     final accent = BandConstants.modeColor(c.mode);
-    final timeStr = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(c.createdAt));
+    final timeStr = TimezoneUtil.formatTime(c.createdAt, AppPreferences.timezone);
 
     return Dismissible(
       key: Key('c_${c.id}'),
