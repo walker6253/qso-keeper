@@ -53,7 +53,10 @@ class CloudlogSyncService {
         if (gridSquare.isNotEmpty) adif.write(_adifTag('GRIDSQUARE', gridSquare));
         if (callsign.isNotEmpty) adif.write(_adifTag('STATION_CALLSIGN', callsign.toUpperCase().trim()));
         adif.write('<EOR>');
-        final resp = await _dio.post(url, data: {'key': apiKey, 'station_profile_id': stationProfileId, 'type': 'adif', 'string': adif.toString()}, options: Options(contentType: Headers.jsonContentType));
+        final resp = await _dio.post(url,
+          data: jsonEncode({'key': apiKey, 'station_profile_id': stationProfileId, 'type': 'adif', 'string': adif.toString()}),
+          options: Options(headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}, validateStatus: (status) => true),
+        );
         if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) success++; else { failed++; errors.add('${c.callsign}: HTTP ${resp.statusCode}'); }
       } catch (e) { failed++; errors.add('${c.callsign}: $e'); }
     }
@@ -63,7 +66,7 @@ class CloudlogSyncService {
   Future<List<StationInfo>> fetchStationInfo(String baseUrl, String apiKey) async {
     try {
       final url = baseUrl.trimRight().replaceAll(RegExp(r'/+$'), '') + '/index.php/api/station_info/$apiKey';
-      final resp = await _dio.get(url); final arr = resp.data as List;
+      final resp = await _dio.get(url, options: Options(headers: {'Accept': 'application/json'})); final arr = resp.data as List;
       return arr.map((o) => StationInfo(o['station_id']?.toString()??'', o['station_profile_name']?.toString()??'')).toList();
     } catch (_) { return []; }
   }
@@ -71,7 +74,8 @@ class CloudlogSyncService {
   Future<bool> testConnection(String baseUrl, String apiKey) async {
     try {
       final url = baseUrl.trimRight().replaceAll(RegExp(r'/+$'), '') + '/index.php/api/qso';
-      final resp = await _dio.post(url, data: {'key':apiKey,'type':'adif','string':'<CALL:6>TEST01 <BAND:3>20m <MODE:3>SSB <QSO_DATE:8>20260101 <TIME_ON:6>000000 <RST_SENT:3>599 <RST_RCVD:3>599 <EOR>'}, options: Options(contentType: Headers.jsonContentType));
+      final body = jsonEncode({'key': apiKey, 'type': 'adif', 'string': '<CALL:6>TEST01 <BAND:3>20m <MODE:3>SSB <QSO_DATE:8>20260101 <TIME_ON:6>000000 <RST_SENT:3>599 <RST_RCVD:3>599 <EOR>'});
+      final resp = await _dio.post(url, data: body, options: Options(headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}, validateStatus: (s) => true, sendTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
       // Cloudlog 返回 4xx 也说明连接成功（只是测试QSO被拒绝）
       final code = resp.statusCode;
       if (code != null && code >= 200 && code < 500) return true;
