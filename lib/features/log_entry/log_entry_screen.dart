@@ -859,7 +859,7 @@ Row(children: [
               if (c.frequencyMHz > 0 || c.rstSent.isNotEmpty || c.rstReceived.isNotEmpty) ...[
                 const SizedBox(height: 5),
                 Row(children: [
-                  if (c.frequencyMHz > 0) Text('${c.frequencyMHz} MHz', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'monospace', color: textPrimary)),
+                  if (c.frequencyMHz > 0) Flexible(child: Text('${c.frequencyMHz} MHz', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'monospace', color: textPrimary))),
                   const Spacer(),
                   if (c.rstSent.isNotEmpty) ...[
                     Text('Snt ', style: TextStyle(color: textSecondary, fontSize: 11)),
