@@ -1,7 +1,7 @@
 name: qso_keeper
 description: "QSO Keeper - 业余无线电通联日志"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.10.4
