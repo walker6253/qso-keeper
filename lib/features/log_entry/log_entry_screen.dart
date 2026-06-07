@@ -379,7 +379,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           final bh = constraints.maxHeight;
           final wide = bw >= 840 || (bw > bh && bw >= 600);
           if (wide) {
-            return _wideLayout(bw, bgColor, surfaceColor, surfaceLightColor, textPrimary, textSecondary, textMuted, borderColor, isDark);
+            return _wideLayout(bw, contactsAsync, bgColor, surfaceColor, surfaceLightColor, textPrimary, textSecondary, textMuted, borderColor, isDark);
           }
           return Column(children: [
         // ===== top: scrollable input form =====
@@ -475,7 +475,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       );
   }
 
-  Widget _wideLayout(double bw, Color bgColor, Color surfaceColor, Color surfaceLightColor, Color textPrimary, Color textSecondary, Color textMuted, Color borderColor, bool isDark) {
+  Widget _wideLayout(double bw, AsyncValue<List<ContactRecord>> contactsAsync, Color bgColor, Color surfaceColor, Color surfaceLightColor, Color textPrimary, Color textSecondary, Color textMuted, Color borderColor, bool isDark) {
     final pad = MediaQuery.of(context).padding;
     return Padding(
       padding: EdgeInsets.fromLTRB(pad.left, 0, pad.right, pad.bottom),
@@ -531,14 +531,13 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
         VerticalDivider(width: 1, thickness: 1, color: borderColor.withAlpha(76)),
         SizedBox(
           width: bw * 0.45,
-          child: _buildContactList(surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
+          child: _buildContactList(contactsAsync, surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
         ),
       ]),
     );
   }
 
-  Widget _buildContactList(Color surfaceColor, Color borderColor, Color textPrimary, Color textSecondary, Color textMuted, bool isDark) {
-    final contactsAsync = ref.watch(logEntryProvider(widget.dateEpochDay));
+  Widget _buildContactList(AsyncValue<List<ContactRecord>> contactsAsync, Color surfaceColor, Color borderColor, Color textPrimary, Color textSecondary, Color textMuted, bool isDark) {
     final today = DateTime.now();
     final todayEpoch = today.millisecondsSinceEpoch ~/ 86400000;
     final title = _historicalContacts != null ? '历史  $_searchCallsign' : '今日通联';
