@@ -654,8 +654,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       filled: true, fillColor: isDark ? AppColors.surface : const Color(0xFFF5F3F4),
       suffixIcon: Builder(builder: (_) {
         final prov = CallSignUtils.getProvince(_smartInput.text.split(' ').first);
-        final hasFreq = _smartInput.text.trim().contains(' ');
-        if (!hasFreq) return const SizedBox.shrink();
+        if (_frequency.isEmpty && _mode.text.isEmpty) return const SizedBox.shrink();
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
