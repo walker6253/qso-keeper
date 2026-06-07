@@ -385,6 +385,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           return Column(children: [
         // ===== top: scrollable input form =====
         Expanded(flex: 3, child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (_showSuccess)
@@ -455,6 +456,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           ? (_historicalContacts!.isEmpty
             ? Center(child: Text('无历史记录', style: TextStyle(color: textMuted)))
             : ListView.builder(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.symmetric(horizontal: 14),
                 itemCount: _historicalContacts!.length,
                 itemBuilder: (_, i) => _contactCard(_historicalContacts![i], surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
@@ -463,6 +465,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           data: (contacts) => contacts.isEmpty
             ? Center(child: Text('暂无记录', style: TextStyle(color: textMuted)))
             : ListView.builder(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.symmetric(horizontal: 14),
                 itemCount: contacts.length,
                 itemBuilder: (_, i) => _contactCard(contacts[i], surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
@@ -486,6 +489,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           Expanded(flex: 58, child: Column(children: [
             Expanded(
               child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   if (_showSuccess)
@@ -535,6 +539,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           Expanded(child: Column(children: [
             Expanded(
               child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   if (_showSuccess)
