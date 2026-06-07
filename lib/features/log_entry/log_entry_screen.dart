@@ -82,7 +82,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       return;
     }
     final prevEmpty = _smartInput.text.length <= 1;
-    if (prevEmpty) { _preEditFreq = _frequency; _preEditMode = _mode.text; }
+    if (prevEmpty) { _preEditFreq = _frequency; _preEditMode = _mode.text; _frequency = ''; _mode.text = ''; _band = ''; }
     final parsed = SmartInputParser.parse(input);
     if (parsed.callsign.isNotEmpty) _callsign = parsed.callsign;
     if (parsed.frequencyMHz.isNotEmpty) { if (_frequency != parsed.frequencyMHz) { _frequency = parsed.frequencyMHz; _updateBand(); } }
