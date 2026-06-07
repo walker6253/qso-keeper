@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/design/app_colors.dart';
-import '../../core/design/responsive.dart';
 import '../../data/database/app_database.dart';
 import '../../services/update_checker.dart';
 import '../../data/preferences/app_preferences.dart';
@@ -119,19 +118,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }),
         actions: [IconButton(icon: Icon(Icons.bar_chart, color: textPrimary), onPressed: () => context.go('/stats'))],
       ),
-      body: OrientationBuilder(
-        builder: (ctx, orientation) {
-          final isLandscape = orientation == Orientation.landscape;
-          final wc = widthClassOf(context);
-          final useGrid = isLandscape || useTwoColumns(context);
+      body: LayoutBuilder(
+        builder: (ctx, constraints) {
+          final w = constraints.maxWidth;
+          final h = constraints.maxHeight;
+          final landscape = w > h;
+          // Grid layout for tablets (w>=840) OR landscape phones
+          final useGrid = w >= 840 || (landscape && w >= 600);
 
-          // cardSpacing: Compact=10, Medium=12, Expanded=14
-          final cardSpacing = isLandscape ? 14.0 : switch (wc) {
-            WidthClass.expanded => 14.0,
-            WidthClass.medium => 12.0,
-            WidthClass.compact => 10.0,
-          };
-          final hPad = isLandscape ? 48.0 : responsiveHPadding(context);
+          // Spacing values matching original Android project
+          final hPad = useGrid
+              ? (w >= 840 ? 48.0 : 24.0)
+              : 12.0;
+          final cardSpacing = useGrid
+              ? (w >= 840 ? 14.0 : 12.0)
+              : 10.0;
 
           return datesAsync.when(
             data: (dates) => dates.isEmpty
