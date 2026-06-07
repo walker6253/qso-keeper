@@ -329,18 +329,23 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     ]);
   }
 
-  void _chipToggle(List<String> allItems, String item, String Function() getSelected, Function(String) setSelected, TextEditingController notes) {
+  void _antennaChipToggle(String tag) {
     setState(() {
-      var notesText = notes.text;
-      for (final a in allItems) { notesText = notesText.replaceAll(a, ''); }
-      notesText = notesText.replaceAll(RegExp(r'\s{2,}'), ' ').replaceAll(RegExp(r' ,'), ',').replaceAll(RegExp(r', ,'), ',').trim().replaceAll(RegExp(r',+$'), '').trim();
-      if (getSelected() == item) {
-        setSelected('');
-        notes.text = notesText;
-      } else {
-        setSelected(item);
-        notes.text = notesText.isNotEmpty ? '$notesText, $item' : item;
-      }
+      var t = _notes.text;
+      for (final a in _antennaList) { t = t.replaceAll(a, ''); }
+      t = t.replaceAll(RegExp(r'\s{2,}'), ' ').replaceAll(RegExp(r' ,'), ',').replaceAll(RegExp(r', ,'), ',').trim().replaceAll(RegExp(r',+$'), '').trim();
+      if (_selectedAntenna == tag) { _selectedAntenna = ''; _notes.text = t; }
+      else { _selectedAntenna = tag; _notes.text = t.isNotEmpty ? '$t, $tag' : tag; }
+    });
+  }
+
+  void _rigChipToggle(String model) {
+    setState(() {
+      var t = _notes.text;
+      for (final c in _rigCategories) { for (final m in c.models) { t = t.replaceAll(m, ''); } }
+      t = t.replaceAll(RegExp(r'\s{2,}'), ' ').replaceAll(RegExp(r' ,'), ',').replaceAll(RegExp(r', ,'), ',').trim().replaceAll(RegExp(r',+$'), '').trim();
+      if (_selectedRig == model) { _selectedRig = ''; _notes.text = t; }
+      else { _selectedRig = model; _notes.text = t.isNotEmpty ? '$t, $model' : model; }
     });
   }
 
@@ -784,7 +789,7 @@ Row(children: [
       Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.amber, letterSpacing: 1)),
       const SizedBox(height: 4),
       Wrap(spacing: 6, runSpacing: 6, children: items.map((tag) => GestureDetector(
-        onTap: () => _chipToggle(items, tag, () => _selectedAntenna, (v) { _selectedAntenna = v; }, _notes),
+        onTap: () => _antennaChipToggle(tag),
         child: Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: selected == tag ? AppColors.amber.withValues(alpha: 0.2) : surfaceLight,
@@ -806,7 +811,7 @@ Row(children: [
         Wrap(spacing: 6, runSpacing: 6, children: cat.models.map((model) {
           final sel = _selectedRig == model;
           return GestureDetector(
-            onTap: () => _chipToggle(cat.models, model, () => _selectedRig, (v) { _selectedRig = v; }, _notes),
+            onTap: () => _rigChipToggle(model),
             child: Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: sel ? AppColors.amber.withValues(alpha: 0.2) : surfaceLight,
