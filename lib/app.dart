@@ -58,7 +58,7 @@ class _BottomNavBar extends StatelessWidget {
       ),
       padding: EdgeInsets.only(top: 6, bottom: 8 + MediaQuery.of(context).padding.bottom),
       child: Row(children: [
-        Expanded(child: _navItem(Icons.radio, '日志', isHome, () {
+        Expanded(child: _navItem(Icons.date_range, '日志', isHome, () {
           if (!isHome) context.go('/home');
         })),
         Expanded(child: _navItem(Icons.settings, '设置', currentRoute.startsWith('/settings'), () {
@@ -72,8 +72,6 @@ class _BottomNavBar extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: selected ? 4 : 0, height: 4, decoration: BoxDecoration(color: AppColors.amber, shape: BoxShape.circle)),
-        const SizedBox(height: 4),
         Icon(icon, size: 22, color: selected ? AppColors.amber : AppColors.textMuted.withValues(alpha: 0.5)),
         const SizedBox(height: 2),
         Text(label, style: TextStyle(fontSize: 10, color: selected ? AppColors.amber : AppColors.textMuted.withValues(alpha: 0.5))),

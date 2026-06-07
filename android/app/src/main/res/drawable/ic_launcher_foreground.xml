@@ -1,0 +1,57 @@
+﻿<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="108dp"
+        android:height="108dp"
+        android:viewportWidth="108"
+        android:viewportHeight="108">
+
+    <group name="logbook_group">
+        <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M52,34 L34,34 C30.7,34 28,36.7 28,40 L28,72 C30.7,72 52,74 52,74 Z"/>
+        <path
+                android:fillColor="#F8FAFC"
+                android:pathData="M56,34 L74,34 C77.3,34 80,36.7 80,40 L80,72 C77.3,72 56,74 56,74 Z"/>
+        <path
+                android:fillColor="#E2E8F0"
+                android:pathData="M52,34 L56,34 L56,74 L52,74 Z"/>
+
+        <path
+                android:strokeColor="#CBD5E1"
+                android:strokeWidth="2"
+                android:strokeLineCap="round"
+                android:pathData="M34,42 L46,42 M34,48 L46,48 M34,54 L46,54 M34,60 L46,60 M34,66 L46,66" />
+
+        <path
+                android:strokeColor="#CBD5E1"
+                android:strokeWidth="2"
+                android:strokeLineCap="round"
+                android:pathData="M60,42 L72,42 M60,48 L72,48 M60,54 L72,54 M60,60 L72,60 M60,66 L72,66" />
+    </group>
+
+    <group
+            name="pencil_group"
+            android:translateX="66"
+            android:translateY="56"
+            android:rotation="35">
+
+        <path
+                android:fillColor="#475569"
+                android:pathData="M-2.5,-10 L2.5,-10 L2.5,6 L-2.5,6 Z" />
+
+        <path
+                android:fillColor="#94A3B8"
+                android:pathData="M-2.5,-12 L2.5,-12 L2.5,-10 L-2.5,-10 Z" />
+
+        <path
+                android:fillColor="#F97316"
+                android:pathData="M-2.5,-15 C-2.5,-15 -2.5,-17 0,-17 C2.5,-17 2.5,-15 2.5,-15 L2.5,-12 L-2.5,-12 Z" />
+
+        <path
+                android:fillColor="#FED7AA"
+                android:pathData="M-2.5,6 L2.5,6 L0,12 Z" />
+
+        <path
+                android:fillColor="#1E293B"
+                android:pathData="M-1,10 L1,10 L0,12 Z" />
+    </group>
+</vector>

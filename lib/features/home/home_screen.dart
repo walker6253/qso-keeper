@@ -68,8 +68,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       locale: const Locale('zh'),
       builder: (ctx, child) => Theme(data: Theme.of(ctx).copyWith(
         colorScheme: Theme.of(ctx).brightness == Brightness.dark
-          ? ColorScheme.dark(primary: AppColors.amberDark, surface: AppColors.darkSurface)
+          ? ColorScheme.dark(primary: AppColors.primary, surface: AppColors.darkSurface)
           : ColorScheme.light(primary: AppColors.primary, surface: AppColors.lightSurface),
+        datePickerTheme: DatePickerThemeData(
+          cancelButtonStyle: ButtonStyle(foregroundColor: WidgetStatePropertyAll(Colors.grey)),
+          confirmButtonStyle: ButtonStyle(foregroundColor: WidgetStatePropertyAll(AppColors.primary)),
+        ),
       ), child: child!),
     );
     if (picked != null && mounted) {
@@ -93,11 +97,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: bgColor,
+        backgroundColor: bgColor, scrolledUnderElevation: 0, surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Consumer(builder: (ctx, ref, _) {
           final callsign = AppPreferences.callsign;
-          final title = callsign.isNotEmpty ? '\ 的通联日志' : '业余无线电通联日志';
+          ref.watch(homeRefreshNotifier);
+          final title = callsign.isNotEmpty ? '$callsign 的通联日志' : '业余无线电通联日志';
           return Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: textPrimary, fontFamily: 'monospace'));
         }),
         actions: [IconButton(icon: Icon(Icons.bar_chart, color: textPrimary), onPressed: () => context.go('/stats'))],
@@ -105,11 +110,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: datesAsync.when(
         data: (dates) => dates.isEmpty
           ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.radio, size: 64, color: textMuted.withValues(alpha: 0.3)),
-              const SizedBox(height: 16),
-              Text('等待信号…', style: TextStyle(color: textMuted, fontSize: 14)),
+              Text('暂无通联记录', style: TextStyle(color: textMuted, fontSize: 16)),
               const SizedBox(height: 8),
-              Text('点击右下角按钮开始记录', style: TextStyle(color: textMuted.withValues(alpha: 0.5), fontSize: 12)),
+              Text('点击右下角按钮开始记录', style: TextStyle(color: textMuted.withValues(alpha: 0.5), fontSize: 13)),
             ]))
           : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -131,7 +134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           const SizedBox(width: 10),
                         ],
                         Expanded(child: Text(d.label, style: TextStyle(
-                          fontSize: 14, fontWeight: d.isToday ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 14, fontWeight: FontWeight.w400,
                           color: textPrimary))),
                         Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(color: accentBgColor, borderRadius: BorderRadius.circular(6)),
@@ -147,7 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(shape: const CircleBorder(),
         onPressed: _pickDateAndGo,
-        backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary,
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

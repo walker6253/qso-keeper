@@ -159,7 +159,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     ref.read(persistedFreqProvider.notifier).state = _frequency;
     ref.read(persistedModeProvider.notifier).state = _mode.text;
     _smartInput.clear();
-    _rstSent.text = '59'; _rstReceived.text = '59'; _powerTx.text = '100'; _powerRx.text = '100';
+    _rstSent.text = '59'; _rstReceived.text = '59';
     _selectedAntenna = ''; _selectedRig = '';
     setState(() => _showSuccess = true);
     _closeAllKeyboards();
@@ -186,17 +186,23 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     var editTime = TimeOfDay.fromDateTime(editDt);
     var editCreatedAt = c.createdAt;
     var modeExpanded = false;
-    final modeOptions = ['USB', 'LSB', 'FM'];
+    final modeOptions = BandConstants.modes;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.surface : Colors.white;
     final inputBg = isDark ? AppColors.surfaceLight : const Color(0xFFF5F3F4);
     final pickerTheme = Theme.of(context).copyWith(
       colorScheme: isDark ? ColorScheme.dark(primary: AppColors.amber, surface: AppColors.surface)
         : ColorScheme.light(primary: AppColors.amber, surface: Colors.white),
+      datePickerTheme: DatePickerThemeData(
+        cancelButtonStyle: ButtonStyle(foregroundColor: WidgetStatePropertyAll(Colors.grey)),
+        confirmButtonStyle: ButtonStyle(foregroundColor: WidgetStatePropertyAll(AppColors.primary)),
+      ),
     );
 
     final result = await showDialog<bool>(context: context, builder: (ctx) {
-      return StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
+      return StatefulBuilder(builder: (ctx, setDlg) => ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
+        child: AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -233,18 +239,18 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           ]),
           const SizedBox(height: 14),
           Row(children: [
-            Expanded(child: _editTextColumn(ctx, setDlg, 'RST 发送', rsCtrl, inputBg, isDark)),
+            Expanded(child: _editTextColumn(ctx, setDlg, '信号报告-发', rsCtrl, inputBg, isDark)),
             const SizedBox(width: 16),
-            Expanded(child: _editTextColumn(ctx, setDlg, 'RST 接收', rrCtrl, inputBg, isDark)),
+            Expanded(child: _editTextColumn(ctx, setDlg, '信号报告-收', rrCtrl, inputBg, isDark)),
           ]),
           const SizedBox(height: 14),
           Row(children: [
-            Expanded(child: _editTextColumn(ctx, setDlg, '功率 发送', ptxCtrl, inputBg, isDark)),
+            Expanded(child: _editTextColumn(ctx, setDlg, '我的功率 (W)', ptxCtrl, inputBg, isDark)),
             const SizedBox(width: 16),
-            Expanded(child: _editTextColumn(ctx, setDlg, '功率 接收', prxCtrl, inputBg, isDark)),
+            Expanded(child: _editTextColumn(ctx, setDlg, '对方功率 (W)', prxCtrl, inputBg, isDark)),
           ]),
           const SizedBox(height: 14),
-          _editTextColumn(ctx, setDlg, '备注', notesCtrl, inputBg, isDark, maxLines: 3),
+          _editTextColumn(ctx, setDlg, '备注', notesCtrl, inputBg, isDark),
         ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false),
@@ -252,7 +258,8 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, true),
             child: Text('保存', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.amber))),
         ],
-      ));
+      ),
+    ));
     });
     if (result == true && context.mounted) {
       final db = ref.read(dbProvider);
@@ -359,11 +366,11 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       appBar: AppBar(
         leading: IconButton(icon: Icon(Icons.arrow_back, color: isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D)), onPressed: () => context.go('/home')),
         title: Text(dateLabel, style: TextStyle(fontWeight: FontWeight.w700, color: isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D))),
-        backgroundColor: bgColor, elevation: 0,
+        backgroundColor: bgColor, elevation: 0, scrolledUnderElevation: 0, surfaceTintColor: Colors.transparent,
       ),
       body: Column(children: [
         // ===== top: scrollable input form =====
-        Expanded(child: SingleChildScrollView(
+        Expanded(flex: 3, child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (_showSuccess)
@@ -408,7 +415,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           child: SizedBox(width: double.infinity, child: ElevatedButton(
             onPressed: _callsign.isNotEmpty ? _save : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary, foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary, foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               disabledBackgroundColor: AppColors.amber.withValues(alpha: 0.35),
             ),
@@ -419,18 +426,18 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
         // ===== contact list header =====
         Padding(padding: EdgeInsets.fromLTRB(14, 8, 14, 4), child: Row(children: [
-          Text(_historicalContacts != null ? '历史  $_searchCallsign' : (widget.dateEpochDay == todayEpoch ? '今日通联' : '${dt.month}月${dt.day}日 通联'),
-            style: TextStyle(color: isDark ? AppColors.primaryDark : AppColors.primary, fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+          Text('今日通联',
+            style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
           if (_historicalContacts == null && widget.dateEpochDay == todayEpoch) ...[
             const Spacer(),
             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(color: (isDark ? AppColors.primaryDark : AppColors.primary).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-              child: Text('${contactsAsync.valueOrNull?.length ?? 0} 条', style: TextStyle(fontSize: 11, color: isDark ? AppColors.primaryDark : AppColors.primary, fontFamily: 'monospace'))),
+              decoration: BoxDecoration(color: (AppColors.primary).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+              child: Text('${contactsAsync.valueOrNull?.length ?? 0} 条', style: TextStyle(fontSize: 11, color: AppColors.primary, fontFamily: 'monospace'))),
           ],
         ])),
 
         // ===== scrollable contact list (historical or today) =====
-        Expanded(child: _historicalContacts != null
+        Expanded(flex: 2, child: _historicalContacts != null
           ? (_historicalContacts!.isEmpty
             ? Center(child: Text('无历史记录', style: TextStyle(color: textMuted)))
             : ListView.builder(
@@ -473,7 +480,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     onChanged: (_) { _onSmartInputChanged(); setState(() {}); },
     onSubmitted: (_) => _commitNext(),
     decoration: InputDecoration(
-      hintText: '呼号 频率 模式...',
+      hintText: '呼号 频率 模式',
       hintStyle: TextStyle(color: textMuted, fontSize: 13),
       filled: true, fillColor: isDark ? AppColors.surface : const Color(0xFFF5F3F4),
       suffixIcon: Builder(builder: (_) {
@@ -487,7 +494,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
                 padding: const EdgeInsets.only(right: 2),
                 child: Text(prov, style: TextStyle(color: textMuted.withValues(alpha: 0.6), fontSize: 11)),
               ),
-            IconButton(icon: Icon(Icons.keyboard_return, size: 20, color: isDark ? AppColors.primaryDark : AppColors.primary), onPressed: _commitNext),
+            IconButton(icon: Icon(Icons.keyboard_return, size: 20, color: AppColors.primary), onPressed: _commitNext),
           ],
         );
       }),
@@ -510,9 +517,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
   Widget _buildRstRow(Color surfaceLight, Color border, Color textPrimary, Color textSecondary) =>
     Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(child: _rstColumn('我的信号报告', _rstSent, _showRstSentKb, () => _toggleRstKb(true), (v) { _rstSent.text = v; setState(() => _showRstSentKb = false); }, surfaceLight, border, textPrimary, textSecondary)),
+      Expanded(child: _rstColumn('信号报告-发', _rstSent, _showRstSentKb, () => _toggleRstKb(true), (v) { _rstSent.text = v; setState(() => _showRstSentKb = false); }, surfaceLight, border, textPrimary, textSecondary)),
       SizedBox(width: 12),
-      Expanded(child: _rstColumn('对方信号报告', _rstReceived, _showRstRecvKb, () => _toggleRstKb(false), (v) { _rstReceived.text = v; setState(() => _showRstRecvKb = false); }, surfaceLight, border, textPrimary, textSecondary)),
+      Expanded(child: _rstColumn('信号报告-收', _rstReceived, _showRstRecvKb, () => _toggleRstKb(false), (v) { _rstReceived.text = v; setState(() => _showRstRecvKb = false); }, surfaceLight, border, textPrimary, textSecondary)),
     ]);
 
   Widget _buildPowerRow(Color surfaceLight, Color border, Color textPrimary, Color textSecondary) =>
@@ -522,24 +529,38 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       Expanded(child: _powerColumn('对方功率 (W)', _powerRx, _showPowerRxKb, () => _togglePowerKb(false), (v) { _powerRx.text = v; setState(() => _showPowerRxKb = false); }, surfaceLight, border, textPrimary, textSecondary)),
     ]);
 
-  Widget _buildNotesField(Color textPrimary, Color textSecondary, Color border, bool isDark) => TextField(
-    controller: _notes, maxLines: 2, style: TextStyle(fontSize: 13, color: textPrimary),
-    decoration: InputDecoration(
-      labelText: '备注', labelStyle: TextStyle(color: textSecondary),
-      filled: true, fillColor: isDark ? AppColors.surface : const Color(0xFFF5F3F4),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: border.withValues(alpha: 0.5))),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: border.withValues(alpha: 0.5))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.amber, width: 1.5)),
-    ));
+  Widget _buildNotesField(Color textPrimary, Color textSecondary, Color border, bool isDark) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _secLabel('备注', textSecondary),
+      TextField(
+        controller: _notes, style: TextStyle(fontSize: 13, color: textPrimary),
+        decoration: InputDecoration(
+          filled: true, fillColor: isDark ? AppColors.surface : const Color(0xFFF5F3F4),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: border.withValues(alpha: 0.5))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: border.withValues(alpha: 0.5))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.amber, width: 1.5)),
+        )),
+    ]);
 
   void _toggleRstKb(bool sent) => setState(() {
-    if (sent) { _showRstSentKb = !_showRstSentKb; _showRstRecvKb = false; _showPowerTxKb = false; _showPowerRxKb = false; }
-    else { _showRstRecvKb = !_showRstRecvKb; _showRstSentKb = false; _showPowerTxKb = false; _showPowerRxKb = false; }
+    if (sent) {
+      _showRstSentKb = !_showRstSentKb; _showRstRecvKb = false; _showPowerTxKb = false; _showPowerRxKb = false;
+      if (_showRstSentKb) _rstSent.clear();
+    } else {
+      _showRstRecvKb = !_showRstRecvKb; _showRstSentKb = false; _showPowerTxKb = false; _showPowerRxKb = false;
+      if (_showRstRecvKb) _rstReceived.clear();
+    }
   });
 
   void _togglePowerKb(bool tx) => setState(() {
-    if (tx) { _showPowerTxKb = !_showPowerTxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerRxKb = false; }
-    else { _showPowerRxKb = !_showPowerRxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerTxKb = false; }
+    if (tx) {
+      _showPowerTxKb = !_showPowerTxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerRxKb = false;
+      if (_showPowerTxKb) _powerTx.clear();
+    } else {
+      _showPowerRxKb = !_showPowerRxKb; _showRstSentKb = false; _showRstRecvKb = false; _showPowerTxKb = false;
+      if (_showPowerRxKb) _powerRx.clear();
+    }
   });
 
   Widget _infoPanel(String label, String value) => Column(children: [
@@ -555,7 +576,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       GestureDetector(onTap: onTap, child: Container(width: double.infinity, height: 36, alignment: Alignment.centerLeft,
         padding: EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: surfaceLight, borderRadius: BorderRadius.circular(8), border: Border.all(color: border.withValues(alpha: 0.3))),
         child: Text(ctrl.text, style: TextStyle(fontSize: 13, color: textPrimary)))),
-      if (showKb) _rstKeyboard(ctrl, surfaceLight, border, textPrimary),
+      if (showKb) _rstKeyboard(ctrl, surfaceLight, border),
       SizedBox(height: 6),
       _quickChipRow(['59', '58', '57', '56'], ctrl.text, onSelect, const Color(0xFF01D00D), const Color(0xFFF9A825), surfaceLight, border, textSecondary),
     ]);
@@ -574,18 +595,48 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
   Widget _secLabel(String t, Color c) => Padding(padding: EdgeInsets.only(left: 2, bottom: 4), child: Text(t.toUpperCase(), style: TextStyle(color: c, fontSize: 10, letterSpacing: 1)));
 
-  Widget _rstKeyboard(TextEditingController ctrl, Color surfaceLight, Color border, Color textPrimary) =>
-    Padding(padding: EdgeInsets.only(top: 4), child: Container(width: double.infinity, padding: EdgeInsets.all(8),
+  Widget _rstKeyboard(TextEditingController ctrl, Color surfaceLight, Color border) {
+    const red = Color(0xFFE53935);
+    const green = Color(0xFF43A047);
+    return Padding(padding: const EdgeInsets.only(top: 4), child: Container(
+      width: double.infinity, padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(color: surfaceLight, borderRadius: BorderRadius.circular(10)),
       child: Column(children: [
-        Row(children: [1,2,3,4,5].map((d) => Expanded(child: _kbtn('$d', ctrl, 2, surfaceLight, border, textPrimary))).toList()), SizedBox(height: 4),
-        Row(children: [6,7,8,9,0].map((d) => Expanded(child: _kbtn('$d', ctrl, 2, surfaceLight, border, textPrimary))).toList()), SizedBox(height: 4),
-        Row(children: [
-          Expanded(child: _abtn('清空', () => ctrl.clear(), AppColors.alertRed)), SizedBox(width: 4),
-          Expanded(child: _abtn('删除', () { if (ctrl.text.isNotEmpty) ctrl.text = ctrl.text.substring(0, ctrl.text.length - 1); }, AppColors.textSecondary)), SizedBox(width: 4),
-          Expanded(child: _abtn('完成', () => setState(() { _showRstSentKb = false; _showRstRecvKb = false; }), AppColors.scopeGreen)),
+        Row(children: List.generate(5, (i) {
+          final d = i + 1;
+          final t = i / 4.0;
+          final keyColor = Color.lerp(red, green, t)!;
+          return Expanded(child: _rstKey('$d', ctrl, keyColor, surfaceLight));
+        })),
+        const SizedBox(height: 4),
+        Row(children: [6,7,8,9,0].map((d) {
+          final isZero = d == 0;
+          final keyColor = isZero ? AppColors.textSecondary : Color.lerp(red, green, (d == 9 ? 9 : d - 1) / 8.0)!;
+          return Expanded(child: _rstKey('$d', ctrl, keyColor, surfaceLight));
+        }).toList()),
+        const SizedBox(height: 4),
+Row(children: [
+          Expanded(child: _abtn('清空', () { ctrl.clear(); setState(() {}); }, AppColors.alertRed)),
+          const SizedBox(width: 4),
+          Expanded(child: _abtn('删除', () { if (ctrl.text.isNotEmpty) { ctrl.text = ctrl.text.substring(0, ctrl.text.length - 1); setState(() {}); } }, AppColors.textSecondary)),
+          const SizedBox(width: 4),
+          Expanded(child: _abtn('完成', () {
+            if (ctrl.text.isEmpty) ctrl.text = '59';
+            setState(() { _showRstSentKb = false; _showRstRecvKb = false; });
+          }, AppColors.scopeGreen)),
         ]),
-      ])));
+      ]),
+    ));
+  }
+
+  Widget _rstKey(String d, TextEditingController c, Color keyColor, Color surfaceLight) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: () { if (c.text.length < 2) { c.text += d; setState(() {}); } },
+      child: Container(height: 34, alignment: Alignment.center, margin: const EdgeInsets.all(1),
+        decoration: BoxDecoration(color: keyColor.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(6)),
+        child: Text(d, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: keyColor))),
+    ));
 
   Widget _powerKeyboard(TextEditingController ctrl, Color surfaceLight, Color border, Color textPrimary) =>
     Padding(padding: EdgeInsets.only(top: 4), child: Container(width: double.infinity, padding: EdgeInsets.all(8),
@@ -596,21 +647,29 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
         Row(children: ['7','8','9'].map((d) => Expanded(child: _kbtn(d, ctrl, 4, surfaceLight, border, textPrimary))).toList()), SizedBox(height: 4),
         Row(children: [
           Expanded(child: _kbtn('0', ctrl, 4, surfaceLight, border, textPrimary)), SizedBox(width: 4),
-          Expanded(child: _abtn('清空', () => ctrl.clear(), AppColors.alertRed)), SizedBox(width: 4),
-          Expanded(child: _abtn('删除', () { if (ctrl.text.isNotEmpty) ctrl.text = ctrl.text.substring(0, ctrl.text.length - 1); }, AppColors.textSecondary)), SizedBox(width: 4),
-          Expanded(child: _abtn('完成', () => setState(() { _showPowerTxKb = false; _showPowerRxKb = false; }), AppColors.ionBlue)),
+          Expanded(child: _abtn('清空', () { ctrl.clear(); setState(() {}); }, AppColors.alertRed)), SizedBox(width: 4),
+          Expanded(child: _abtn('删除', () { if (ctrl.text.isNotEmpty) ctrl.text = ctrl.text.substring(0, ctrl.text.length - 1); setState(() {}); }, AppColors.textSecondary)), SizedBox(width: 4),
+          Expanded(child: _abtn('完成', () { if (ctrl.text.isEmpty) ctrl.text = '100'; setState(() { _showPowerTxKb = false; _showPowerRxKb = false; }); }, AppColors.ionBlue)),
         ]),
       ])));
 
-  Widget _kbtn(String d, TextEditingController c, int m, Color surface, Color border, Color textPrimary) => GestureDetector(
-    onTap: () { if (c.text.length < m) c.text += d; setState(() {}); },
-    child: Container(height: 34, alignment: Alignment.center, margin: EdgeInsets.all(1),
-      decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(6), border: Border.all(color: border.withValues(alpha: 0.3))),
-      child: Text(d, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: textPrimary))));
+  Widget _kbtn(String d, TextEditingController c, int m, Color surface, Color border, Color textPrimary) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: () { if (c.text.length < m) { c.text += d; setState(() {}); } },
+      child: Container(height: 34, alignment: Alignment.center, margin: EdgeInsets.all(1),
+        decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(6), border: Border.all(color: border.withValues(alpha: 0.3))),
+        child: Text(d, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: textPrimary))),
+    ));
 
-  Widget _abtn(String l, VoidCallback t, Color cl) => GestureDetector(onTap: t,
-    child: Container(height: 30, alignment: Alignment.center, decoration: BoxDecoration(color: cl.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: cl.withValues(alpha: 0.3))),
-      child: Text(l, style: TextStyle(color: cl, fontSize: 11, fontWeight: FontWeight.w600))));
+  Widget _abtn(String l, VoidCallback t, Color cl) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: t,
+      child: Container(height: 30, alignment: Alignment.center, decoration: BoxDecoration(color: cl.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: cl.withValues(alpha: 0.3))),
+        child: Text(l, style: TextStyle(color: cl, fontSize: 11, fontWeight: FontWeight.w600))),
+    ));
+
 
   Widget _quickChipRow(List<String> items, String selected, Function(String) onSelect, Color from, Color to,
     Color surfaceLight, Color border, Color textSecondary) {
@@ -630,12 +689,26 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
   Widget _contactCard(ContactRecord c, Color surface, Color border, Color textPrimary, Color textSecondary, Color textMuted, bool isDark) {
     final accent = BandConstants.modeColor(c.mode);
-    final timeStr = TimezoneUtil.formatTime(c.createdAt, AppPreferences.timezone);
+    final dt = TimezoneUtil.dateTimeFromEpoch(c.createdAt, AppPreferences.timezone);
+    final dateTimeStr = dt.year.toString() + "-" + dt.month.toString().padLeft(2, "0") + "-" + dt.day.toString().padLeft(2, "0") + " " + dt.hour.toString().padLeft(2, "0") + ":" + dt.minute.toString().padLeft(2, "0");
 
     return Dismissible(
       key: Key('c_${c.id}'),
       direction: DismissDirection.horizontal,
-      confirmDismiss: (dir) async { _deleteContact(c.id); return false; },
+      confirmDismiss: (dir) async {
+        final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+          backgroundColor: isDark ? AppColors.surface : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Text('删除记录', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+          content: Text('确定删除 ${c.callsign} 的通联？', style: TextStyle(color: textSecondary, fontSize: 13)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('取消', style: TextStyle(color: textMuted))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('删除', style: TextStyle(color: AppColors.alertRed, fontWeight: FontWeight.w600))),
+          ],
+        ));
+        if (confirmed == true) { _deleteContact(c.id); return true; }
+        return false;
+      },
       background: Container(alignment: Alignment.centerLeft, padding: const EdgeInsets.only(left: 20),
         decoration: BoxDecoration(color: AppColors.alertRed.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)),
         child: const Icon(Icons.delete, color: AppColors.alertRed)),
@@ -651,13 +724,12 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
             Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
                 Expanded(child: Row(children: [
-                  Text(c.callsign, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.5, color: isDark ? AppColors.primaryDark : AppColors.primary)),
+                  Text(c.callsign, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.5, color: AppColors.primary)),
                   const SizedBox(width: 8),
                   GestureDetector(onTap: () => _openQrz(c.callsign), child: Text('QRZ', style: TextStyle(color: textMuted, fontSize: 10))),
                 ])),
                 Row(children: [
-                  Icon(Icons.access_time, size: 11, color: textMuted), const SizedBox(width: 3),
-                  Text(timeStr, style: TextStyle(color: textMuted, fontSize: 11)),
+                  Text(dateTimeStr, style: TextStyle(color: textMuted, fontSize: 11)),
                   const SizedBox(width: 6),
                   _modePill(c.mode, accent),
                 ]),

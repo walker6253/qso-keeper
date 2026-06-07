@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:drift/drift.dart' show Value;
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:ui' as ui;
 import '../../core/design/app_colors.dart';
 import '../../utils/timezone_util.dart';
 import '../../data/database/app_database.dart';
@@ -25,6 +27,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final _apiKeyFocus = FocusNode();
+  final _apiKeyDisplayCtrl = _MaskedController();
   final _callsignCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _equipCtrl = TextEditingController();
@@ -37,7 +41,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _gridSquare = '';
   int _totalContacts = 0;
   bool _syncing = false;
+  bool _testingConn = false;
+  String? _testConnResult;
   String _syncResult = '';
+  String _stationProfileId = '1';
+  List<StationInfo> _stationList = [];
   List<String> _antennaList = [];
   List<EquipmentCategory> _rigList = [];
   String _newAntenna = '', _newRigBrand = '', _newRigModel = '';
@@ -45,6 +53,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _apiKeyDisplayCtrl.realCtrl = _cloudKeyCtrl;
+    _apiKeyFocus.addListener(() => setState(() {}));
     _loadPrefs();
   }
 
@@ -63,7 +73,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _gridCtrl.text = AppPreferences.gridSquare;
       _cloudUrlCtrl.text = AppPreferences.cloudlogUrl;
       _cloudKeyCtrl.text = AppPreferences.cloudlogApiKey;
+      _apiKeyDisplayCtrl.notifyListeners();
       _autoUpload = AppPreferences.autoUploadEnabled;
+      _stationProfileId = AppPreferences.stationProfileId;
+      _stationList = StationInfo.fromJsonList(AppPreferences.stationListJson);
       _timezone = AppPreferences.timezone;
       _gridSquare = AppPreferences.gridSquare;
       _totalContacts = total;
@@ -156,6 +169,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_syncResult), backgroundColor: result.failed > 0 ? AppColors.alertRed : AppColors.primary));
   }
 
+  Future<void> _testCloudlogConnection() async {
+    if (_cloudUrlCtrl.text.isEmpty || _cloudKeyCtrl.text.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('请先配置 Cloudlog URL 和 API Key'), backgroundColor: AppColors.alertRed));
+      return;
+    }
+    setState(() { _testingConn = true; _testConnResult = null; });
+    final service = CloudlogSyncService();
+    final ok = await service.testConnection(_cloudUrlCtrl.text, _cloudKeyCtrl.text);
+    if (ok) {
+      try {
+        final stations = await service.fetchStationInfo(_cloudUrlCtrl.text, _cloudKeyCtrl.text);
+        AppPreferences.stationListJson = StationInfo.toJsonList(stations);
+        if (mounted) setState(() { _testingConn = false; _testConnResult = '连接成功'; _stationList = stations; });
+      } catch (_) {
+        if (mounted) setState(() { _testingConn = false; _testConnResult = '连接成功'; });
+      }
+    } else {
+      if (mounted) setState(() { _testingConn = false; _testConnResult = '连接失败'; });
+    }
+  }
+
+  void _showAutoUploadHelp() {
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      backgroundColor: Theme.of(ctx).brightness == Brightness.dark ? AppColors.surface : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: Text('自动上传说明', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(ctx).brightness == Brightness.dark ? AppColors.textPrimary : const Color(0xFF1B1C1D))),
+      content: Text('开启后如果保存的通联日志有错误，则需要手动在 Cloudlog 后台删除。Cloudlog 未提供删除 API，所以无法自动删除。', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('知道了', style: TextStyle(color: AppColors.amber)))],
+    ));
+  }
+
+  void _openGitHub() {
+    final uri = Uri.parse('https://github.com/walker6253/qso-keeper');
+    launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   Future<void> _addAntenna() async {
     if (_newAntenna.trim().isEmpty) return;
     _antennaList.add(_newAntenna.trim());
@@ -210,13 +259,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: Text('设置', style: TextStyle(fontWeight: FontWeight.w700, color: textPrimary)),
       ),
       body: ListView(padding: const EdgeInsets.all(14), children: [
-        _sectionTitle('OP 信息', icon: Icons.person),
+        _sectionTitle('OP 信息', icon: Icons.person, titleColor: textPrimary),
         const SizedBox(height: 8),
         _textField('呼号', _callsignCtrl, (v) => _savePref('callsign', v), textPrimary, textSecondary, inputFill, borderColor),
         _textField('姓名', _nameCtrl, (v) => _savePref('opName', v), textPrimary, textSecondary, inputFill, borderColor),
         _textField('设备', _equipCtrl, (v) => _savePref('equipment', v), textPrimary, textSecondary, inputFill, borderColor),
         const SizedBox(height: 16),
-        _sectionTitle('时区', icon: Icons.schedule),
+        _sectionTitle('时区', icon: Icons.schedule, titleColor: textPrimary),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
@@ -236,12 +285,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
 
-        _sectionTitle('天线管理', icon: Icons.settings_input_antenna),
+        _sectionTitle('天线管理', icon: Icons.settings_input_antenna, titleColor: textPrimary),
         const SizedBox(height: 8),
-        ..._antennaList.asMap().entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 1), child: Row(children: [
-          Expanded(child: Text(e.value, style: TextStyle(color: textPrimary, fontSize: 13))),
-          IconButton(icon: Icon(Icons.delete_outline, size: 18, color: AppColors.alertRed.withValues(alpha: 0.6)), onPressed: () => _deleteAntenna(e.key)),
-        ]))),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _antennaList.length,
+          onReorder: (oldIndex, newIndex) async {
+            if (newIndex > oldIndex) newIndex--;
+            await EquipmentManager.moveAntenna(oldIndex, newIndex);
+            setState(() { final item = _antennaList.removeAt(oldIndex); _antennaList.insert(newIndex, item); });
+          },
+          buildDefaultDragHandles: false,
+          itemBuilder: (_, i) => Padding(
+            key: ValueKey('ant_' + _antennaList[i]),
+            padding: const EdgeInsets.only(bottom: 1),
+            child: Row(children: [
+              ReorderableDragStartListener(index: i, child: Icon(Icons.drag_handle, size: 18, color: textSecondary.withValues(alpha: 0.4))),
+              const SizedBox(width: 4),
+              Expanded(child: Text(_antennaList[i], style: TextStyle(color: textPrimary, fontSize: 13))),
+              IconButton(icon: Icon(Icons.delete_outline, size: 18, color: AppColors.alertRed.withValues(alpha: 0.6)), onPressed: () => _deleteAntenna(i)),
+            ]),
+          ),
+        ),
         Row(children: [
           Expanded(child: TextField(decoration: InputDecoration(hintText: '新天线', isDense: true, filled: true, fillColor: inputFill, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor))),
             style: TextStyle(fontSize: 12, color: textPrimary), onChanged: (v) => _newAntenna = v)),
@@ -249,18 +315,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ElevatedButton(onPressed: _addAntenna, style: ElevatedButton.styleFrom(backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary), child: Text('添加', style: TextStyle(fontSize: 11, color: Colors.white))),
         ]),
         const SizedBox(height: 16),
-        _sectionTitle('设备管理', icon: Icons.build),
+        _sectionTitle('设备管理', icon: Icons.build, titleColor: textPrimary),
         const SizedBox(height: 8),
-        ..._rigList.expand((cat) => [
-          Text(cat.brand, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: textPrimary)),
-          const SizedBox(height: 2),
-          ...cat.models.map((m) => Padding(padding: const EdgeInsets.only(bottom: 1), child: Row(children: [
-            SizedBox(width: 16),
-            Expanded(child: Text(m, style: TextStyle(color: textPrimary, fontSize: 12))),
-            IconButton(icon: Icon(Icons.delete_outline, size: 16, color: AppColors.alertRed.withValues(alpha: 0.6)), onPressed: () => _deleteRigModel(cat.brand, m)),
-          ]))),
-          const SizedBox(height: 2),
-        ]),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _rigList.length,
+          onReorder: (oldIndex, newIndex) async {
+            if (newIndex > oldIndex) newIndex--;
+            await EquipmentManager.moveRigBrand(oldIndex, newIndex);
+            setState(() { final item = _rigList.removeAt(oldIndex); _rigList.insert(newIndex, item); });
+          },
+          buildDefaultDragHandles: false,
+          itemBuilder: (_, i) {
+            final cat = _rigList[i];
+            return Padding(
+              key: ValueKey('rig_' + cat.brand),
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  ReorderableDragStartListener(index: i, child: Icon(Icons.drag_handle, size: 16, color: textSecondary.withValues(alpha: 0.4))),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(cat.brand, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: textPrimary))),
+                  GestureDetector(
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+                        backgroundColor: isDark ? AppColors.surface : Colors.white,
+                        title: Text('删除品牌', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary, fontSize: 15)),
+                        content: Text('确定删除 "' + cat.brand + '" 及其所有型号？', style: TextStyle(color: textSecondary, fontSize: 13)),
+                        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('取消', style: TextStyle(color: textMuted))), TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('删除', style: TextStyle(color: AppColors.alertRed, fontWeight: FontWeight.w600)))],
+                      ));
+                      if (confirmed == true) { await EquipmentManager.removeRigBrand(cat.brand); setState(() => _rigList.removeWhere((x) => x.brand == cat.brand)); }
+                    },
+                    child: Icon(Icons.delete_outline, size: 16, color: AppColors.alertRed.withValues(alpha: 0.5)),
+                  ),
+                ]),
+                const SizedBox(height: 2),
+                ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: cat.models.length,
+                  buildDefaultDragHandles: false,
+                  onReorder: (oldIdx, newIdx) async {
+                    if (newIdx > oldIdx) newIdx--;
+                    final newList = _rigList.toList();
+                    final bi = newList.indexWhere((x) => x.brand == cat.brand);
+                    if (bi >= 0) {
+                      final models = List<String>.from(newList[bi].models);
+                      final item = models.removeAt(oldIdx);
+                      models.insert(newIdx, item);
+                      newList[bi] = EquipmentCategory(cat.brand, models);
+                      await EquipmentManager.setRigs(newList);
+                      setState(() { _rigList[bi] = EquipmentCategory(cat.brand, models); });
+                    }
+                  },
+                  itemBuilder: (_, mi) {
+                    final m = cat.models[mi];
+                    return Padding(
+                      key: ValueKey('model_' + cat.brand + '_' + m),
+                      padding: const EdgeInsets.only(bottom: 1),
+                      child: Row(children: [
+                        const SizedBox(width: 24),
+                        ReorderableDragStartListener(index: mi, child: Icon(Icons.drag_handle, size: 14, color: textSecondary.withValues(alpha: 0.3))),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(m, style: TextStyle(color: textPrimary, fontSize: 12))),
+                        IconButton(icon: Icon(Icons.delete_outline, size: 14, color: AppColors.alertRed.withValues(alpha: 0.5)), onPressed: () async {
+                          final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+                            backgroundColor: isDark ? AppColors.surface : Colors.white,
+                            title: Text('删除型号', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary, fontSize: 15)),
+                            content: Text('确定删除 ' + cat.brand + ' - ' + m + ' ？', style: TextStyle(color: textSecondary, fontSize: 13)),
+                            actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('取消', style: TextStyle(color: textMuted))), TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('删除', style: TextStyle(color: AppColors.alertRed, fontWeight: FontWeight.w600)))],
+                          ));
+                          if (confirmed == true) { _deleteRigModel(cat.brand, m); }
+                        }),
+                      ]),
+                    );
+                  },
+                ),
+              ]),
+            );
+          },
+        ),
         Row(children: [
           Expanded(flex: 2, child: TextField(decoration: InputDecoration(hintText: '品牌', isDense: true, filled: true, fillColor: inputFill, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor))),
             style: TextStyle(fontSize: 12, color: textPrimary), onChanged: (v) => _newRigBrand = v)),
@@ -271,48 +406,120 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ElevatedButton(onPressed: _addRig, style: ElevatedButton.styleFrom(backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary), child: Text('添加', style: TextStyle(fontSize: 11, color: Colors.white))),
         ]),
         const SizedBox(height: 16),
-        _sectionTitle('Cloudlog 同步', icon: Icons.cloud),
+        _sectionTitle('Cloudlog 同步', icon: Icons.cloud, titleColor: textPrimary),
         const SizedBox(height: 8),
         _textField('URL', _cloudUrlCtrl, (v) => _savePref('cloudlogUrl', v), textPrimary, textSecondary, inputFill, borderColor),
-        _textField('API Key', _cloudKeyCtrl, (v) => _savePref('cloudlogApiKey', v), textPrimary, textSecondary, inputFill, borderColor),
+        Padding(padding: const EdgeInsets.only(bottom: 10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.only(bottom: 4, left: 2), child: Text('API Key', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textSecondary, letterSpacing: 1))),
+          TextField(
+            controller: _apiKeyFocus.hasFocus ? _cloudKeyCtrl : _apiKeyDisplayCtrl,
+            onChanged: (v) => _savePref('cloudlogApiKey', v),
+            focusNode: _apiKeyFocus,
+            style: TextStyle(color: textPrimary, fontSize: 13, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              filled: true, fillColor: inputFill, isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.amber, width: 1.5)),
+              suffixIcon: IconButton(
+                icon: Icon(_apiKeyFocus.hasFocus ? Icons.visibility : Icons.visibility_off, size: 18, color: textSecondary),
+                onPressed: () { if (_apiKeyFocus.hasFocus) { _apiKeyFocus.unfocus(); } else { _apiKeyFocus.requestFocus(); } },
+              ),
+            ),
+          ),
+        ])),
         Row(children: [
-          Text('自动上传', style: TextStyle(color: textSecondary, fontSize: 13)),
+          GestureDetector(
+            onTap: () => _showAutoUploadHelp(),
+            child: Row(children: [
+              Text('保存日志后自动上传', style: TextStyle(color: textSecondary, fontSize: 13)),
+              const SizedBox(width: 4),
+              Icon(Icons.help_outline, size: 14, color: textSecondary.withValues(alpha: 0.6)),
+            ]),
+          ),
           const Spacer(),
-          Switch(value: _autoUpload, onChanged: (v) { setState(() => _autoUpload = v); AppPreferences.autoUploadEnabled = v; }, activeColor: isDark ? AppColors.primaryDark : AppColors.primary, inactiveTrackColor: inputFill),
+          Switch(value: _autoUpload, onChanged: (v) { setState(() => _autoUpload = v); AppPreferences.autoUploadEnabled = v; }, activeColor: AppColors.primary, inactiveTrackColor: inputFill),
         ]),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(padding: const EdgeInsets.only(bottom: 4, left: 2), child: Text('台站 ID', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textSecondary, letterSpacing: 1))),
+            DropdownButtonFormField<String>(
+              value: _stationProfileId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                filled: true, fillColor: inputFill, isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.amber, width: 1.5)),
+              ),
+              style: TextStyle(fontSize: 13, color: textPrimary),
+              dropdownColor: isDark ? AppColors.surfaceLight : Colors.white,
+              items: _stationList.isEmpty
+                ? [DropdownMenuItem(value: _stationProfileId, child: Text(_stationProfileId, style: TextStyle(fontSize: 12, color: textSecondary)))]
+                : _stationList.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name + ' (' + s.id + ')', style: TextStyle(fontSize: 12, color: textPrimary)))).toList(),
+              onChanged: (v) { if (v != null) { setState(() => _stationProfileId = v); AppPreferences.stationProfileId = v; } },
+            ),
+          ]),
+        ),
         const SizedBox(height: 8),
-        ElevatedButton.icon(onPressed: _syncing ? null : _syncCloudlog,
-          icon: _syncing ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Icon(Icons.cloud_upload),
-          label: Text(_syncing ? '同步中...' : '手动同步'),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.amber)),
+        Row(children: [
+          Expanded(child: OutlinedButton(
+            onPressed: (_cloudUrlCtrl.text.isNotEmpty && !_testingConn && !_syncing) ? _testCloudlogConnection : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _testConnResult != null ? (_testConnResult == '连接成功' ? AppColors.scopeGreen : AppColors.alertRed) : textSecondary,
+              side: BorderSide(color: borderColor),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: _testingConn
+              ? Row(mainAxisSize: MainAxisSize.min, children: [SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: textSecondary)), const SizedBox(width: 6), Text('测试中...', style: TextStyle(fontSize: 12))])
+              : Text(_testConnResult ?? '测试连接', style: TextStyle(fontSize: 12)),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: ElevatedButton.icon(onPressed: _syncing ? null : _syncCloudlog,
+            icon: _syncing ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Icon(Icons.cloud_upload),
+            label: Text(_syncing ? '同步中...' : '手动同步'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white))),
+        ]),
         if (_syncResult.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_syncResult, style: TextStyle(color: textSecondary, fontSize: 12))),
         const SizedBox(height: 16),
-        _sectionTitle('数据管理', icon: Icons.folder),
+        _sectionTitle('数据管理', icon: Icons.folder, titleColor: textPrimary),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: ElevatedButton.icon(onPressed: _exportAdif, icon: Icon(Icons.file_upload), label: Text('导出 ADIF'), style: ElevatedButton.styleFrom(backgroundColor: inputFill))),
+          Expanded(child: ElevatedButton.icon(onPressed: _exportAdif, icon: Icon(Icons.file_upload), label: Text('导出 ADIF'), style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white))),
           const SizedBox(width: 8),
-          Expanded(child: ElevatedButton.icon(onPressed: _importAdif, icon: Icon(Icons.file_download), label: Text('导入 ADIF'), style: ElevatedButton.styleFrom(backgroundColor: inputFill))),
+          Expanded(child: ElevatedButton.icon(onPressed: _importAdif, icon: Icon(Icons.file_download), label: Text('导入 ADIF'), style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white))),
         ]),
         const SizedBox(height: 20),
-        _sectionTitle('关于', icon: Icons.info_outline),
+        _sectionTitle('关于', icon: Icons.info_outline, titleColor: textPrimary),
         const SizedBox(height: 8),
-        Card(color: surfaceColor, child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('QSO Keeper v1.0.0', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text('总通联数: $_totalContacts', style: TextStyle(color: textSecondary, fontSize: 12)),
-          const SizedBox(height: 8),
-          TextButton(onPressed: () async { final info = await UpdateChecker.check(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(info.hasUpdate ? '有新版本 v${info.latestVersion}' : '已是最新版本 v${info.currentVersion}'))); },
-            child: Text('检查更新', style: TextStyle(color: AppColors.ionBlue, fontSize: 12))),
-        ]))),
+        TextButton(onPressed: () async { final info = await UpdateChecker.check(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(info.hasUpdate ? '有新版本 v${info.latestVersion}' : '已是最新版本 v${info.currentVersion}'))); },
+          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap, alignment: Alignment.centerLeft),
+          child: Text('检查更新', style: TextStyle(color: AppColors.ionBlue, fontSize: 12))),
+        const SizedBox(height: 20),
+        Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('Designed by BI9BRH', style: TextStyle(color: textMuted.withValues(alpha: 0.5), fontSize: 11)),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () => _openGitHub(),
+              child: CustomPaint(size: const Size(14, 14), painter: _GitHubPainter(textMuted.withValues(alpha: 0.5))),
+            ),
+          ]),
+          Text('Contributors: BI9CGB', style: TextStyle(color: textMuted.withValues(alpha: 0.4), fontSize: 10)),
+        ])),
         const SizedBox(height: 80),
       ]),
     );
   }
 
-  Widget _sectionTitle(String title, {IconData? icon}) => Row(children: [
+  Widget _sectionTitle(String title, {IconData? icon, Color titleColor = const Color(0xFF1B1C1D)}) => Row(children: [
     if (icon != null) ...[Icon(icon, size: 16, color: AppColors.primary), const SizedBox(width: 6)],
-    Text(title, style: TextStyle(color: AppColors.textLight, fontSize: 14, fontWeight: FontWeight.w700)),
+    Text(title, style: TextStyle(color: titleColor, fontSize: 14, fontWeight: FontWeight.w700)),
   ]);
 
   Widget _textField(String label, TextEditingController ctrl, Function(String) onChanged, Color textPrimary, Color textSecondary, Color inputFill, Color border) =>
@@ -335,6 +542,84 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void dispose() {
     _callsignCtrl.dispose(); _nameCtrl.dispose(); _equipCtrl.dispose();
     _locCtrl.dispose(); _gridCtrl.dispose(); _cloudUrlCtrl.dispose(); _cloudKeyCtrl.dispose();
+    _apiKeyDisplayCtrl.dispose();
+    _apiKeyFocus.dispose();
     super.dispose();
   }
+}
+
+
+// API Key 脱敏：失焦时前后各4字符可见，中间用*遮盖
+class _MaskedController extends TextEditingController {
+  TextEditingController? realCtrl;
+
+  static String _mask(String raw) {
+    if (raw.length <= 8) return raw;
+    final prefix = raw.substring(0, 4);
+    final suffix = raw.substring(raw.length - 4);
+    final stars = '*' * (raw.length - 8);
+    return prefix + stars + suffix;
+  }
+
+  @override
+  String get text => realCtrl != null ? _mask(realCtrl!.text) : '';
+
+  @override
+  set text(String _) {}
+
+  @override
+  TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
+    return TextSpan(text: text, style: style);
+  }
+}
+
+class _GitHubPainter extends CustomPainter {
+  final Color color;
+  _GitHubPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = color..style = PaintingStyle.fill..isAntiAlias = true;
+    final s = size.width / 24.0;
+    canvas.translate(0, 0);
+    final path = ui.Path()..moveTo(12*s, 2*s)..lineTo(12*s, 2*s);
+    path.reset();
+    path.moveTo(12*s, 2*s);
+    path.addOval(Rect.fromLTWH(2*s, 2*s, 20*s, 20*s));
+    final inner = ui.Path()..addOval(Rect.fromLTWH(3.5*s, 3.5*s, 17*s, 17*s));
+    final combined = ui.Path.combine(ui.PathOperation.difference, path, inner);
+    canvas.drawPath(combined, p);
+    final body = ui.Path();
+    body.moveTo(12*s, 4.2*s);
+    body.cubicTo(7.7*s, 4.2*s, 4.2*s, 7.7*s, 4.2*s, 12*s);
+    body.cubicTo(4.2*s, 15.4*s, 6.4*s, 18.3*s, 9.45*s, 19.35*s);
+    body.cubicTo(9.83*s, 19.42*s, 9.96*s, 19.19*s, 9.96*s, 18.99*s);
+    body.lineTo(9.96*s, 18.09*s);
+    body.cubicTo(7.82*s, 18.54*s, 7.37*s, 17.14*s, 7.37*s, 17.14*s);
+    body.cubicTo(7.03*s, 16.32*s, 6.55*s, 16.11*s, 6.55*s, 16.11*s);
+    body.cubicTo(5.87*s, 15.66*s, 6.59*s, 15.67*s, 6.59*s, 15.67*s);
+    body.cubicTo(7.33*s, 15.72*s, 7.72*s, 16.43*s, 7.72*s, 16.43*s);
+    body.cubicTo(8.36*s, 17.52*s, 9.44*s, 17.2*s, 9.86*s, 17.02*s);
+    body.cubicTo(9.92*s, 16.55*s, 10.12*s, 16.23*s, 10.33*s, 16.05*s);
+    body.cubicTo(8.68*s, 15.87*s, 6.93*s, 15.23*s, 6.93*s, 12.01*s);
+    body.cubicTo(6.93*s, 11.15*s, 7.23*s, 10.46*s, 7.72*s, 9.91*s);
+    body.cubicTo(7.64*s, 9.71*s, 7.38*s, 8.86*s, 7.8*s, 7.73*s);
+    body.cubicTo(7.8*s, 7.73*s, 8.48*s, 7.52*s, 9.94*s, 8.53*s);
+    body.cubicTo(10.6*s, 8.35*s, 11.31*s, 8.26*s, 12.03*s, 8.26*s);
+    body.cubicTo(12.75*s, 8.26*s, 13.47*s, 8.35*s, 14.13*s, 8.53*s);
+    body.cubicTo(15.59*s, 7.52*s, 16.27*s, 7.73*s, 16.27*s, 7.73*s);
+    body.cubicTo(16.69*s, 8.86*s, 16.43*s, 9.71*s, 16.35*s, 9.91*s);
+    body.cubicTo(16.84*s, 10.46*s, 17.14*s, 11.15*s, 17.14*s, 12.01*s);
+    body.cubicTo(17.14*s, 15.24*s, 15.39*s, 15.87*s, 13.72*s, 16.04*s);
+    body.cubicTo(14*s, 16.27*s, 14.28*s, 16.72*s, 14.28*s, 17.47*s);
+    body.lineTo(14.28*s, 18.99*s);
+    body.cubicTo(14.28*s, 19.19*s, 14.4*s, 19.43*s, 14.8*s, 19.35*s);
+    body.cubicTo(17.84*s, 18.3*s, 20.04*s, 15.4*s, 20.04*s, 12*s);
+    body.cubicTo(20.04*s, 7.7*s, 16.54*s, 4.2*s, 12.24*s, 4.2*s);
+    body.close();
+    canvas.drawPath(body, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

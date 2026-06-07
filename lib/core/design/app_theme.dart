@@ -125,7 +125,7 @@ class AppTheme {
       titleTextStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.amberDark, fontFamily: 'monospace'),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primaryDark,
+      backgroundColor: AppColors.primary,
       foregroundColor: Color(0xFF001946),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -139,7 +139,7 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(
-      backgroundColor: AppColors.amberDark,
+      backgroundColor: AppColors.primary,
       foregroundColor: AppColors.darkBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -147,7 +147,7 @@ class AppTheme {
     )),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.darkSurface,
-      selectedColor: AppColors.primaryDark.withValues(alpha: 0.2),
+      selectedColor: AppColors.primary.withValues(alpha: 0.2),
       labelStyle: GoogleFonts.spaceMono(fontSize: 11, color: AppColors.textDarkVariant),
       secondaryLabelStyle: GoogleFonts.spaceMono(fontSize: 11, color: AppColors.amberDark),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: AppColors.borderDark)),

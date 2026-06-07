@@ -22,6 +22,15 @@ class EquipmentManager {
     (await SharedPreferences.getInstance()).setString('antennas', jsonEncode(list));
   }
 
+  static Future<void> moveAntenna(int from, int to) async {
+    final list = await getAntennas();
+    if (from < list.length && to < list.length) {
+      final item = list.removeAt(from);
+      list.insert(to, item);
+      await setAntennas(list);
+    }
+  }
+
   static Future<List<EquipmentCategory>> getRigs() async {
     final p = await SharedPreferences.getInstance(); final json = p.getString('rigs');
     if (json == null) return List.from(_defaultRigs);
@@ -34,5 +43,36 @@ class EquipmentManager {
   static Future<void> setRigs(List<EquipmentCategory> list) async {
     final arr = list.map((c) => {'brand': c.brand, 'models': c.models}).toList();
     (await SharedPreferences.getInstance()).setString('rigs', jsonEncode(arr));
+  }
+
+  static Future<void> moveRigBrand(int from, int to) async {
+    final list = await getRigs();
+    if (from < list.length && to < list.length) {
+      final item = list.removeAt(from);
+      list.insert(to, item);
+      await setRigs(list);
+    }
+  }
+
+  static Future<void> removeAntenna(String item) async {
+    final list = await getAntennas();
+    list.remove(item);
+    await setAntennas(list);
+  }
+
+  static Future<void> removeRigBrand(String brand) async {
+    final list = await getRigs();
+    list.removeWhere((c) => c.brand == brand);
+    await setRigs(list);
+  }
+
+  static Future<void> removeRigModel(String brand, String model) async {
+    final list = await getRigs();
+    final idx = list.indexWhere((c) => c.brand == brand);
+    if (idx >= 0) {
+      list[idx].models.remove(model);
+      if (list[idx].models.isEmpty) list.removeAt(idx);
+      await setRigs(list);
+    }
   }
 }

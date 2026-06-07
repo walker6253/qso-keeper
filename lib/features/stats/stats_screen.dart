@@ -64,7 +64,7 @@ class StatsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: bgColor,
+        backgroundColor: bgColor, scrolledUnderElevation: 0, surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text('通联统计', style: TextStyle(color: textPrimary, fontWeight: FontWeight.w600)),
         leading: IconButton(icon: Icon(Icons.arrow_back, color: textPrimary), onPressed: () => context.go('/home')),
