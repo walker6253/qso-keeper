@@ -250,6 +250,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final textMuted = isDark ? AppColors.textMuted : const Color(0xFF777680);
     final inputFill = isDark ? AppColors.surfaceLight : const Color(0xFFF5F3F4);
     final borderColor = isDark ? AppColors.border.withValues(alpha: 0.3) : const Color(0xFFC3C6D5);
+    final pad = MediaQuery.of(context).padding;
+    final safeSide = pad.left > pad.right ? pad.left : pad.right;
+    final safeBottom = pad.bottom > safeSide ? pad.bottom : safeSide;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -258,7 +261,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         elevation: 0,
         title: Text('设置', style: TextStyle(fontWeight: FontWeight.w700, color: textPrimary)),
       ),
-      body: ListView(padding: const EdgeInsets.all(14), children: [
+      body: Padding(padding: EdgeInsets.fromLTRB(safeSide, 0, safeSide, 0), child: ListView(padding: EdgeInsets.fromLTRB(14, 14, 14, 14 + safeBottom), children: [
         _sectionTitle('OP 信息', icon: Icons.person, titleColor: textPrimary),
         const SizedBox(height: 8),
         _textField('呼号', _callsignCtrl, (v) => _savePref('callsign', v), textPrimary, textSecondary, inputFill, borderColor),
@@ -514,7 +517,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Text('Contributors: BI9CGB', style: TextStyle(color: textMuted.withValues(alpha: 0.4), fontSize: 10)),
         ])),
         const SizedBox(height: 80),
-      ]),
+      ])),
     );
   }
 

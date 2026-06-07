@@ -378,8 +378,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           final bw = constraints.maxWidth;
           final bh = constraints.maxHeight;
           final wide = bw >= 840 || (bw > bh && bw >= 600);
+          final isTablet = bw >= 840;
           if (wide) {
-            return _wideLayout(contactsAsync, bgColor, surfaceColor, surfaceLightColor, textPrimary, textSecondary, textMuted, borderColor, isDark);
+            return _wideLayout(contactsAsync, bgColor, surfaceColor, surfaceLightColor, textPrimary, textSecondary, textMuted, borderColor, isDark, isTablet ? 58 : 50, isTablet ? 42 : 50);
           }
           return Column(children: [
         // ===== top: scrollable input form =====
@@ -475,13 +476,14 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       );
   }
 
-  Widget _wideLayout(AsyncValue<List<ContactRecord>> contactsAsync, Color bgColor, Color surfaceColor, Color surfaceLightColor, Color textPrimary, Color textSecondary, Color textMuted, Color borderColor, bool isDark) {
+  Widget _wideLayout(AsyncValue<List<ContactRecord>> contactsAsync, Color bgColor, Color surfaceColor, Color surfaceLightColor, Color textPrimary, Color textSecondary, Color textMuted, Color borderColor, bool isDark, int leftFlex, int rightFlex) {
     final pad = MediaQuery.of(context).padding;
+    final safeSide = pad.left > pad.right ? pad.left : pad.right;
     return Padding(
-      padding: EdgeInsets.fromLTRB(pad.left, 0, pad.right, pad.left > pad.right ? pad.left : pad.right),
+      padding: EdgeInsets.fromLTRB(safeSide, 0, safeSide, safeSide),
       child: Row(children: [
         Expanded(
-          flex: 55,
+          flex: leftFlex,
           child: Column(children: [
             Expanded(
               child: SingleChildScrollView(
@@ -529,7 +531,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           ]),
         ),
         Expanded(
-          flex: 45,
+          flex: rightFlex,
           child: Container(
             decoration: BoxDecoration(
               border: Border(left: BorderSide(color: borderColor.withAlpha(76), width: 1)),
@@ -877,7 +879,7 @@ Row(children: [
                   ],
                   if ((c.rstSent.isNotEmpty || c.rstReceived.isNotEmpty || c.powerTx.isNotEmpty) && c.powerRx.isNotEmpty) Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('|', style: TextStyle(color: textMuted, fontSize: 11))),
                   if (c.powerRx.isNotEmpty) ...[
-                    Text('Rxp ', style: TextStyle(color: textSecondary, fontSize: 11)),
+                    Text(' Rxp ', style: TextStyle(color: textSecondary, fontSize: 11)),
                     Text(c.powerRx, style: TextStyle(color: textPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
                   ],
                 ]),

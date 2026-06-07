@@ -70,6 +70,7 @@ class _BottomNavBar extends StatelessWidget {
 
   Widget _navItem(IconData icon, String label, bool selected, VoidCallback onTap) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 22, color: selected ? AppColors.amber : AppColors.textMuted.withValues(alpha: 0.5)),

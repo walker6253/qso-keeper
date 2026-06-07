@@ -105,7 +105,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final accentColor = AppColors.amber;
     final accentBgColor = isDark ? AppColors.amber.withAlpha(25) : AppColors.amber.withAlpha(20);
 
-    return Scaffold(
+    final pad = MediaQuery.of(context).padding;
+    final safeSide = pad.left > pad.right ? pad.left : pad.right;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(safeSide, 0, safeSide, 0),
+      child: Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: bgColor, scrolledUnderElevation: 0, surfaceTintColor: Colors.transparent,
@@ -134,6 +138,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ? (w >= 840 ? 14.0 : 12.0)
               : 10.0;
 
+          final pad = MediaQuery.of(context).padding;
+          final safeSide = pad.left > pad.right ? pad.left : pad.right;
+          final safeBottom = pad.bottom > safeSide ? pad.bottom : safeSide;
+
           return datesAsync.when(
             data: (dates) => dates.isEmpty
               ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -143,7 +151,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ]))
               : useGrid
                 ? GridView.builder(
-                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 88 + MediaQuery.of(context).padding.bottom),
+                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 88 + pad.bottom),
                     gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 320,
                       crossAxisSpacing: cardSpacing,
@@ -154,7 +162,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     itemBuilder: (ctx, i) => _card(dates[i], i, surfaceColor, textPrimary, borderColor, accentColor, accentBgColor),
                   )
                 : ListView.builder(
-                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 88 + MediaQuery.of(context).padding.bottom),
+                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 88 + pad.bottom),
                     itemCount: dates.length,
                     itemBuilder: (ctx, i) => Padding(
                       padding: EdgeInsets.only(bottom: cardSpacing),
@@ -170,6 +178,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onPressed: _pickDateAndGo,
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
+      ),
       ),
     );
   }
