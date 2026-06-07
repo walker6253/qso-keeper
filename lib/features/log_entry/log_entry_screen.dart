@@ -115,7 +115,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
 
   void _updateBand() {
     final mhz = double.tryParse(_frequency);
-    if (mhz != null && mhz > 0) { _band = BandUtil.getBand(mhz); final m = BandUtil.autoMode(mhz); if (m.isNotEmpty && _mode.text.isEmpty) _mode.text = m; }
+    if (mhz != null && mhz > 0) { _band = BandUtil.getBand(mhz); final m = BandUtil.autoMode(mhz); if (m.isNotEmpty) _mode.text = m; }
     ref.read(persistedBandProvider.notifier).state = _band;
     ref.read(persistedFreqProvider.notifier).state = _frequency;
     ref.read(persistedModeProvider.notifier).state = _mode.text;

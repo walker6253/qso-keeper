@@ -267,24 +267,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 16),
         _sectionTitle('时区', icon: Icons.schedule, titleColor: textPrimary),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: inputFill,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor),
-          ),
-          child: DropdownButton<String>(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: DropdownButtonFormField<String>(
             value: _timezone,
             isExpanded: true,
-            underline: const SizedBox.shrink(),
+            decoration: InputDecoration(
+              filled: true, fillColor: inputFill, isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.amber, width: 1.5)),
+            ),
             style: TextStyle(fontSize: 13, color: textPrimary),
-            items: TimezoneUtil.zoneIds.map((z) => DropdownMenuItem(value: z, child: Text(TimezoneUtil.displayName(z), style: TextStyle(fontSize: 12)))).toList(),
+            dropdownColor: isDark ? AppColors.surfaceLight : Colors.white,
+            items: TimezoneUtil.zoneIds.map((z) => DropdownMenuItem(value: z, child: Text(TimezoneUtil.displayName(z), style: TextStyle(fontSize: 12, color: textPrimary)))).toList(),
             onChanged: (v) { if (v != null) { setState(() => _timezone = v); _savePref('timezone', v); } },
           ),
         ),
-
+        const SizedBox(height: 8),
         _sectionTitle('天线管理', icon: Icons.settings_input_antenna, titleColor: textPrimary),
         const SizedBox(height: 8),
         ReorderableListView.builder(
