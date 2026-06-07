@@ -373,7 +373,15 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
         title: Text(dateLabel, style: TextStyle(fontWeight: FontWeight.w700, color: isDark ? AppColors.textPrimary : const Color(0xFF1B1C1D))),
         backgroundColor: bgColor, elevation: 0, scrolledUnderElevation: 0, surfaceTintColor: Colors.transparent,
       ),
-      body: Column(children: [
+      body: LayoutBuilder(
+        builder: (ctx, constraints) {
+          final bw = constraints.maxWidth;
+          final bh = constraints.maxHeight;
+          final wide = bw >= 840 || (bw > bh && bw >= 600);
+          if (wide) {
+            return _wideLayout(bw, bgColor, surfaceColor, surfaceLightColor, textPrimary, textSecondary, textMuted, borderColor, isDark);
+          }
+          return Column(children: [
         // ===== top: scrollable input form =====
         Expanded(flex: 3, child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
@@ -461,8 +469,113 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           loading: () => Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.amber)),
           error: (e, _) => Center(child: Text('加载失败', style: TextStyle(color: AppColors.alertRed))),
         )),
-      ]),
-    );
+      ]);
+          },
+        ),
+      );
+  }
+
+  // ==================== ???????? ====================
+  Widget _wideLayout(double bw, Color bgColor, Color surfaceColor, Color surfaceLightColor, Color textPrimary, Color textSecondary, Color textMuted, Color borderColor, bool isDark) {
+    return Row(children: [
+      // ??: ???? 55%
+      SizedBox(
+        width: bw * 0.55,
+        child: Column(children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (_showSuccess)
+                  Container(width: double.infinity, padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8), margin: EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(color: AppColors.scopeGreen.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.check, color: AppColors.scopeGreen, size: 18), SizedBox(width: 8),
+                      Text('????', style: TextStyle(color: AppColors.scopeGreen, fontSize: 13, fontWeight: FontWeight.w600)),
+                    ])),
+                _buildInfoRow(surfaceColor, borderColor),
+                _buildSmartInput(textPrimary, textMuted, borderColor, isDark),
+                if (_showSuggestions && _suggestions.isNotEmpty) _buildSuggestions(surfaceColor, borderColor),
+                SizedBox(height: 14),
+                _buildRstRow(surfaceLightColor, borderColor, textPrimary, textSecondary),
+                SizedBox(height: 14),
+                _buildPowerRow(surfaceLightColor, borderColor, textPrimary, textSecondary),
+                SizedBox(height: 14),
+                _buildNotesField(textPrimary, textSecondary, borderColor, isDark),
+                SizedBox(height: 10),
+                if (_antennaList.isNotEmpty) ...[
+                  _chipSection('??', _antennaList, _selectedAntenna, (v) { _selectedAntenna = v; setState(() {}); }, surfaceLightColor, borderColor, textSecondary),
+                  SizedBox(height: 10),
+                ],
+                if (_rigCategories.isNotEmpty) ...[
+                  _rigChipSection(surfaceLightColor, borderColor, textPrimary, textSecondary),
+                  SizedBox(height: 10),
+                ],
+              ]),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: SizedBox(width: double.infinity, child: ElevatedButton(
+              onPressed: _callsign.isNotEmpty ? _save : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary, foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                disabledBackgroundColor: AppColors.amber.withValues(alpha: 0.35),
+              ),
+              child: Text('????', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
+          )),
+        ]),
+      ),
+      VerticalDivider(width: 1, thickness: 1, color: borderColor.withValues(alpha: 0.3)),
+      // ??: ???? 45%
+      SizedBox(
+        width: bw * 0.45,
+        child: _buildContactList(surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
+      ),
+    ]);
+  }
+
+  Widget _buildContactList(Color surfaceColor, Color borderColor, Color textPrimary, Color textSecondary, Color textMuted, bool isDark) {
+    final contactsAsync = ref.watch(logEntryProvider(widget.dateEpochDay));
+    final today = DateTime.now();
+    final todayEpoch = today.millisecondsSinceEpoch ~/ 86400000;
+    final title = _historicalContacts != null ? '??  ${_searchCallsign}' : '????';
+    return Column(children: [
+      Padding(padding: EdgeInsets.fromLTRB(14, 8, 14, 4), child: Row(children: [
+        Text(title,
+          style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+        if (_historicalContacts == null && widget.dateEpochDay == todayEpoch) ...[
+          const Spacer(),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(color: (AppColors.primary).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+            child: Text('${contactsAsync.valueOrNull?.length ?? 0} ?', style: TextStyle(fontSize: 11, color: AppColors.primary, fontFamily: 'monospace'))),
+        ],
+      ])),
+      Expanded(child: _historicalContacts != null
+        ? (_historicalContacts!.isEmpty
+          ? Center(child: Text('?????', style: TextStyle(color: textMuted)))
+          : ListView.builder(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              itemCount: _historicalContacts!.length,
+              itemBuilder: (_, i) => _contactCard(_historicalContacts![i], surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
+            ))
+        : contactsAsync.when(
+            data: (contacts) => contacts.isEmpty
+              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('????', style: TextStyle(color: textMuted, fontSize: 14)),
+                  SizedBox(height: 4),
+                  Text('???????????', style: TextStyle(color: textMuted.withValues(alpha: 0.5), fontSize: 12)),
+                ]))
+              : ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 14),
+                  itemCount: contacts.length,
+                  itemBuilder: (_, i) => _contactCard(contacts[i], surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark),
+                ),
+            loading: () => Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.amber)),
+            error: (e, _) => Center(child: Text('????', style: TextStyle(color: AppColors.alertRed))),
+          )),
+    ]);
   }
 
   Widget _buildInfoRow(Color surface, Color border) => Container(
