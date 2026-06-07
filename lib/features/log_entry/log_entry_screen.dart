@@ -480,7 +480,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     final pad = MediaQuery.of(context).padding;
     final safeSide = pad.left > pad.right ? pad.left : pad.right;
     return Padding(
-      padding: EdgeInsets.fromLTRB(safeSide, 0, safeSide, safeSide),
+      padding: EdgeInsets.fromLTRB(safeSide, 0, safeSide, safeSide > pad.bottom ? safeSide : pad.bottom),
       child: Row(children: [
         Expanded(
           flex: leftFlex,
