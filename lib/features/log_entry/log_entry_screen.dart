@@ -535,11 +535,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           VerticalDivider(width: 1, thickness: 1, color: borderColor.withAlpha(76)),
           Expanded(flex: 42, child: _buildContactList(contactsAsync, surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark)),
         ])
-        : LayoutBuilder(builder: (ctx, cts) {
-            final half = cts.maxWidth / 2;
-            return Row(children: [
-              SizedBox(width: half, child: Column(children: [
-                Expanded(
+        : Row(children: [
+          Expanded(flex: 1, child: Column(children: [
+            Expanded(
               child: SingleChildScrollView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
@@ -583,11 +581,10 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
                 ),
                 child: Text('保存通联', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
             )),
-              ])),
-              Container(width: 1, color: borderColor.withAlpha(76)),
-              SizedBox(width: half - 1, child: _buildContactList(contactsAsync, surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark)),
-            ]);
-          }),
+          ])),
+          VerticalDivider(width: 1, thickness: 1, color: borderColor.withAlpha(76)),
+          Expanded(flex: 1, child: _buildContactList(contactsAsync, surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark)),
+        ]),
     );
   }
 
