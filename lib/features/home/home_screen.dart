@@ -105,7 +105,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final accentColor = AppColors.amber;
     final accentBgColor = isDark ? AppColors.amber.withAlpha(25) : AppColors.amber.withAlpha(20);
 
-    return Scaffold(
+    return SafeArea(
+      left: true, right: true, top: true, bottom: false,
+      child: Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: bgColor, scrolledUnderElevation: 0, surfaceTintColor: Colors.transparent,
@@ -174,6 +176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onPressed: _pickDateAndGo,
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
+      ),
       ),
     );
   }
