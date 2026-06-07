@@ -82,7 +82,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       return;
     }
     final prevEmpty = _smartInput.text.length <= 1;
-    if (prevEmpty) { _preEditFreq = _frequency; _preEditMode = _mode.text; _frequency = ''; _mode.text = ''; _band = ''; }
+    if (prevEmpty) { _preEditFreq = _frequency; _preEditMode = _mode.text; }
     final parsed = SmartInputParser.parse(input);
     if (parsed.callsign.isNotEmpty) _callsign = parsed.callsign;
     if (parsed.frequencyMHz.isNotEmpty) { if (_frequency != parsed.frequencyMHz) { _frequency = parsed.frequencyMHz; _updateBand(); } }
@@ -535,9 +535,11 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
           VerticalDivider(width: 1, thickness: 1, color: borderColor.withAlpha(76)),
           Expanded(flex: 42, child: _buildContactList(contactsAsync, surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark)),
         ])
-        : Row(children: [
-          Expanded(child: Column(children: [
-            Expanded(
+        : LayoutBuilder(builder: (ctx, cts) {
+            final half = cts.maxWidth / 2;
+            return Row(children: [
+              SizedBox(width: half, child: Column(children: [
+                Expanded(
               child: SingleChildScrollView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(14, 10, 14, 8),
@@ -581,10 +583,11 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
                 ),
                 child: Text('保存通联', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
             )),
-          ])),
-          VerticalDivider(width: 1, thickness: 1, color: borderColor.withAlpha(76)),
-          Expanded(child: _buildContactList(contactsAsync, surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark)),
-        ]),
+              ])),
+              Container(width: 1, color: borderColor.withAlpha(76)),
+              SizedBox(width: half - 1, child: _buildContactList(contactsAsync, surfaceColor, borderColor, textPrimary, textSecondary, textMuted, isDark)),
+            ]);
+          }),
     );
   }
 
@@ -654,7 +657,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
       filled: true, fillColor: isDark ? AppColors.surface : const Color(0xFFF5F3F4),
       suffixIcon: Builder(builder: (_) {
         final prov = CallSignUtils.getProvince(_smartInput.text.split(' ').first);
-        if (_frequency.isEmpty && _mode.text.isEmpty) return const SizedBox.shrink();
+        final inputParsed = SmartInputParser.parse(_smartInput.text);
+        final showReturn = inputParsed.frequencyMHz.isNotEmpty || inputParsed.mode.isNotEmpty;
+        if (prov == null && !showReturn) return const SizedBox.shrink();
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -663,7 +668,8 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
                 padding: const EdgeInsets.only(right: 2),
                 child: Text(prov, style: TextStyle(color: textMuted.withValues(alpha: 0.6), fontSize: 11)),
               ),
-            IconButton(icon: Icon(Icons.keyboard_return, size: 20, color: AppColors.primary), onPressed: _commitNext),
+            if (showReturn)
+              IconButton(icon: Icon(Icons.keyboard_return, size: 20, color: AppColors.primary), onPressed: _commitNext),
           ],
         );
       }),
