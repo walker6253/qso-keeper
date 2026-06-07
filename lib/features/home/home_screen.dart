@@ -134,6 +134,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ? (w >= 840 ? 14.0 : 12.0)
               : 10.0;
 
+          final pad = MediaQuery.of(context).padding;
+          final safeSide = pad.left > pad.right ? pad.left : pad.right;
+          final safeBottom = pad.bottom > safeSide ? pad.bottom : safeSide;
+
           return datesAsync.when(
             data: (dates) => dates.isEmpty
               ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -143,7 +147,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ]))
               : useGrid
                 ? GridView.builder(
-                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 88 + MediaQuery.of(context).padding.bottom),
+                    padding: EdgeInsets.fromLTRB(hPad + safeSide, 8, hPad + safeSide, 88 + safeBottom),
                     gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 320,
                       crossAxisSpacing: cardSpacing,
@@ -154,7 +158,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     itemBuilder: (ctx, i) => _card(dates[i], i, surfaceColor, textPrimary, borderColor, accentColor, accentBgColor),
                   )
                 : ListView.builder(
-                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 88 + MediaQuery.of(context).padding.bottom),
+                    padding: EdgeInsets.fromLTRB(hPad + safeSide, 8, hPad + safeSide, 88 + safeBottom),
                     itemCount: dates.length,
                     itemBuilder: (ctx, i) => Padding(
                       padding: EdgeInsets.only(bottom: cardSpacing),
